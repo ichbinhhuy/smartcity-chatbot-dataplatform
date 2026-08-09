@@ -1,0 +1,33 @@
+# Bảng dimension "quận/huyện" — dùng để join từ các fact cube khác.
+# Chuyển thể trực tiếp từ model `district` trong semantic/smart_city.yaml cũ.
+#
+# public: false -> KHÔNG xuất hiện trong Cube Meta API, nên không lộ ra catalog
+# của LLM (tránh trùng lặp với "energy.district_name" v.v. đã expose qua join).
+# Vẫn dùng được cho join nội bộ như bình thường.
+cubes:
+  - name: district
+    sql_table: public.dim_district
+    public: false
+
+    dimensions:
+      - name: district_id
+        sql: district_id
+        type: number
+        primary_key: true
+
+      - name: district_name
+        sql: district_name
+        type: string
+
+      - name: region
+        sql: region
+        type: string
+        description: "Khu vực: noi_thanh / ngoai_thanh"
+
+      - name: population
+        sql: population
+        type: number
+
+      - name: area_km2
+        sql: area_km2
+        type: number

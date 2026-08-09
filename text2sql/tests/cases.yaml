@@ -1,0 +1,76 @@
+# Bộ test cho bước NLU (câu hỏi -> Cube query). Field đặt tên theo shape Cube
+# (measures/dimensions/filters_fields/time_dimensions), khớp với app/nlu/types.py.
+#
+# Đây là nền cho eval framework của sprint sau (chạy với một LLMClient thật khi
+# đã chọn provider). Hiện tại tests/test_catalog.py chỉ kiểm tra mọi field được
+# tham chiếu ở đây có tồn tại thật trong catalog — chưa gọi LLM.
+
+- id: simple_metric_with_filter
+  question: "Tổng tiêu thụ điện của quận 1 trong tháng trước là bao nhiêu?"
+  expect:
+    status: query
+    measures: [energy.total_consumption]
+    time_dimensions: [energy.recorded_at]
+    filters_fields: [energy.district_name]
+
+- id: group_by_dimension
+  question: "Cho tôi xem lượng điện tiêu thụ theo từng quận trong 30 ngày qua"
+  expect:
+    status: query
+    measures: [energy.total_consumption]
+    dimensions: [energy.district_name]
+    time_dimensions: [energy.recorded_at]
+
+- id: traffic_avg_speed
+  question: "Tốc độ lưu thông trung bình tuần này thế nào?"
+  expect:
+    status: query
+    measures: [traffic.avg_speed]
+    time_dimensions: [traffic.recorded_at]
+
+- id: top_n
+  question: "5 quận có chỉ số AQI trung bình cao nhất tháng này"
+  expect:
+    status: query
+    measures: [air_quality.avg_aqi]
+    dimensions: [air_quality.district_name]
+    limit: 5
+
+- id: filter_by_enum_value
+  question: "Điện tiêu thụ của ngành công nghiệp quý trước"
+  expect:
+    status: query
+    measures: [energy.total_consumption]
+    filters_fields: [energy.sector]
+    time_dimensions: [energy.recorded_at]
+
+- id: public_transport_passengers
+  question: "Tổng số hành khách đi metro năm nay"
+  expect:
+    status: query
+    measures: [public_transport.total_passengers]
+    filters_fields: [public_transport.transport_mode]
+
+- id: no_time_mentioned_uses_default
+  question: "Chỉ số AQI trung bình của thành phố"
+  expect:
+    status: query
+    measures: [air_quality.avg_aqi]
+    time_dimensions: [air_quality.recorded_at]
+
+# --- các trường hợp KHÔNG được gọi tool -------------------------------------
+
+- id: ambiguous_question
+  question: "Cho tôi xem số liệu quận 1"
+  expect:
+    status: clarification
+
+- id: out_of_scope
+  question: "Tỷ lệ tội phạm ở quận 3 năm ngoái là bao nhiêu?"
+  expect:
+    status: clarification
+
+- id: cross_cube_needs_clarification
+  question: "So sánh tiêu thụ điện và tốc độ giao thông"
+  expect:
+    status: clarification

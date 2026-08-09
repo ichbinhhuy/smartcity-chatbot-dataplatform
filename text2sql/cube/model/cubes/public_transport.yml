@@ -1,0 +1,55 @@
+# Cube "public_transport" — hoạt động vận tải hành khách công cộng.
+cubes:
+  - name: public_transport
+    sql_table: public.fact_transport_trips
+
+    joins:
+      - name: district
+        sql: "{CUBE}.district_id = {district.district_id}"
+        relationship: many_to_one
+      - name: transport_route
+        sql: "{CUBE}.route_id = {transport_route.route_id}"
+        relationship: many_to_one
+
+    measures:
+      - name: total_passengers
+        sql: passenger_count
+        type: sum
+        title: "Tổng số lượt hành khách"
+
+      - name: trip_count
+        type: count
+        title: "Số chuyến đã chạy"
+
+      - name: avg_trip_duration
+        sql: trip_duration_min
+        type: avg
+        title: "Thời gian trung bình mỗi chuyến"
+        description: "Thời gian trung bình mỗi chuyến (phút)"
+
+    dimensions:
+      - name: trip_id
+        sql: trip_id
+        type: number
+        primary_key: true
+        public: false # khoá kỹ thuật, không hữu ích để LLM group/filter theo
+
+      - name: district_name
+        sql: "{district.district_name}"
+        type: string
+        description: "Tên quận/huyện"
+
+      - name: route_name
+        sql: "{transport_route.route_name}"
+        type: string
+        description: "Tên tuyến"
+
+      - name: transport_mode
+        sql: "{transport_route.transport_mode}"
+        type: string
+        description: "Loại hình vận tải: bus / metro / brt"
+
+      - name: departed_at
+        sql: departed_at
+        type: time
+        description: "Thời điểm khởi hành chuyến"

@@ -1,0 +1,58 @@
+# Cube "traffic" — tình trạng giao thông đo bằng sensor trên đường.
+cubes:
+  - name: traffic
+    sql_table: public.fact_traffic_readings
+
+    joins:
+      - name: district
+        sql: "{CUBE}.district_id = {district.district_id}"
+        relationship: many_to_one
+      - name: sensor
+        sql: "{CUBE}.sensor_id = {sensor.sensor_id}"
+        relationship: many_to_one
+
+    measures:
+      - name: avg_speed
+        sql: avg_speed_kmh
+        type: avg
+        title: "Tốc độ lưu thông trung bình"
+        description: "Tốc độ lưu thông trung bình (km/h)"
+
+      - name: total_vehicles
+        sql: vehicle_count
+        type: sum
+        title: "Tổng số lượt phương tiện"
+        description: "Tổng số lượt phương tiện đi qua"
+
+      - name: congestion_rate
+        sql: "CASE WHEN {CUBE}.congestion_level = 'high' THEN 1.0 ELSE 0.0 END"
+        type: avg
+        title: "Tỷ lệ ùn tắc cao"
+        description: "Tỷ lệ bản ghi có mức ùn tắc cao (0-1)"
+
+    dimensions:
+      - name: reading_id
+        sql: reading_id
+        type: number
+        primary_key: true
+        public: false # khoá kỹ thuật, không hữu ích để LLM group/filter theo
+
+      - name: district_name
+        sql: "{district.district_name}"
+        type: string
+        description: "Tên quận/huyện"
+
+      - name: region
+        sql: "{district.region}"
+        type: string
+        description: "Khu vực nội thành/ngoại thành"
+
+      - name: congestion_level
+        sql: congestion_level
+        type: string
+        description: "Mức độ ùn tắc: low / medium / high"
+
+      - name: recorded_at
+        sql: recorded_at
+        type: time
+        description: "Thời điểm ghi nhận dữ liệu giao thông"

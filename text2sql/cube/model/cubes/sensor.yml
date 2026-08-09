@@ -1,0 +1,26 @@
+# Bảng dimension "thiết bị IoT" — dùng để join từ traffic/air_quality.
+# public: false -> không lộ ra Cube Meta API, chỉ dùng nội bộ cho join.
+cubes:
+  - name: sensor
+    sql_table: public.dim_sensor
+    public: false
+
+    joins:
+      - name: district
+        sql: "{CUBE}.district_id = {district.district_id}"
+        relationship: many_to_one
+
+    dimensions:
+      - name: sensor_id
+        sql: sensor_id
+        type: number
+        primary_key: true
+
+      - name: sensor_type
+        sql: sensor_type
+        type: string
+        description: "traffic / air_quality"
+
+      - name: installed_at
+        sql: installed_at
+        type: time
