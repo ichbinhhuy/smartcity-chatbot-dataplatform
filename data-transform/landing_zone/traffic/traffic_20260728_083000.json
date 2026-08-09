@@ -1,0 +1,317 @@
+[
+  {
+    "camera_meta": {
+      "device_id": "CAM_SECTION_1_01",
+      "section_id": "section_1",
+      "firmware_ver": "v2.4.1_edge"
+    },
+    "event_time": "2026-07-28 08:30:00",
+    "analytics": {
+      "frame_info": {
+        "fps": 30,
+        "resolution": "1080p"
+      },
+      "summary": {
+        "id": "trf_1785202200000_1_632",
+        "vehicle_count": 236,
+        "avg_speed_kmh": 28.1,
+        "overspeed_flag": false
+      },
+      "sample_detections": [
+        {
+          "vehicle_type": "car",
+          "speed": 29.0
+        },
+        {
+          "vehicle_type": "car",
+          "speed": 27.6
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 29.8
+        }
+      ]
+    },
+    "source_system": "nvidia_jetson_edge_ai"
+  },
+  {
+    "camera_meta": {
+      "device_id": "CAM_SECTION_1_02",
+      "section_id": "section_1",
+      "firmware_ver": "v2.4.1_edge"
+    },
+    "event_time": "2026-07-28 08:30:00",
+    "analytics": {
+      "frame_info": {
+        "fps": 30,
+        "resolution": "1080p"
+      },
+      "summary": {
+        "id": "trf_1785202200000_2_542",
+        "vehicle_count": 246,
+        "avg_speed_kmh": 25.5,
+        "overspeed_flag": false
+      },
+      "sample_detections": [
+        {
+          "vehicle_type": "motorbike",
+          "speed": 27.0
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 25.2
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 28.6
+        }
+      ]
+    },
+    "source_system": "nvidia_jetson_edge_ai"
+  },
+  {
+    "camera_meta": {
+      "device_id": "CAM_SECTION_1_03",
+      "section_id": "section_1",
+      "firmware_ver": "v2.4.1_edge"
+    },
+    "event_time": "2026-07-28 08:30:00",
+    "analytics": {
+      "frame_info": {
+        "fps": 30,
+        "resolution": "1080p"
+      },
+      "summary": {
+        "id": "trf_1785202200000_3_764",
+        "vehicle_count": 224,
+        "avg_speed_kmh": 21.6,
+        "overspeed_flag": false
+      },
+      "sample_detections": [
+        {
+          "vehicle_type": "motorbike",
+          "speed": 20.3
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 21.2
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 20.9
+        }
+      ]
+    },
+    "source_system": "nvidia_jetson_edge_ai"
+  },
+  {
+    "camera_meta": {
+      "device_id": "CAM_SECTION_2_01",
+      "section_id": "section_2",
+      "firmware_ver": "v2.4.1_edge"
+    },
+    "event_time": "2026-07-28 08:30:00",
+    "analytics": {
+      "frame_info": {
+        "fps": 30,
+        "resolution": "1080p"
+      },
+      "summary": {
+        "id": "trf_1785202200000_1_916",
+        "vehicle_count": 251,
+        "avg_speed_kmh": 22.3,
+        "overspeed_flag": false
+      },
+      "sample_detections": [
+        {
+          "vehicle_type": "car",
+          "speed": 21.6
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 25.0
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 22.2
+        }
+      ]
+    },
+    "source_system": "nvidia_jetson_edge_ai"
+  },
+  {
+    "camera_meta": {
+      "device_id": "CAM_SECTION_2_02",
+      "section_id": "section_2",
+      "firmware_ver": "v2.4.1_edge"
+    },
+    "event_time": "2026-07-28 08:30:00",
+    "analytics": {
+      "frame_info": {
+        "fps": 30,
+        "resolution": "1080p"
+      },
+      "summary": {
+        "id": "trf_1785202200000_2_399",
+        "vehicle_count": 253,
+        "avg_speed_kmh": 28.2,
+        "overspeed_flag": false
+      },
+      "sample_detections": [
+        {
+          "vehicle_type": "motorbike",
+          "speed": 30.4
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 26.4
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 28.1
+        }
+      ]
+    },
+    "source_system": "nvidia_jetson_edge_ai"
+  },
+  {
+    "camera_meta": {
+      "device_id": "CAM_SECTION_2_03",
+      "section_id": "section_2",
+      "firmware_ver": "v2.4.1_edge"
+    },
+    "event_time": "2026-07-28 08:30:00",
+    "analytics": {
+      "frame_info": {
+        "fps": 30,
+        "resolution": "1080p"
+      },
+      "summary": {
+        "id": "trf_1785202200000_3_306",
+        "vehicle_count": 242,
+        "avg_speed_kmh": 29.0,
+        "overspeed_flag": false
+      },
+      "sample_detections": [
+        {
+          "vehicle_type": "car",
+          "speed": 28.9
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 30.1
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 27.9
+        }
+      ]
+    },
+    "source_system": "nvidia_jetson_edge_ai"
+  },
+  {
+    "camera_meta": {
+      "device_id": "CAM_SECTION_3_01",
+      "section_id": "section_3",
+      "firmware_ver": "v2.4.1_edge"
+    },
+    "event_time": "2026-07-28 08:30:00",
+    "analytics": {
+      "frame_info": {
+        "fps": 30,
+        "resolution": "1080p"
+      },
+      "summary": {
+        "id": "trf_1785202200000_1_402",
+        "vehicle_count": 243,
+        "avg_speed_kmh": 32.2,
+        "overspeed_flag": false
+      },
+      "sample_detections": [
+        {
+          "vehicle_type": "car",
+          "speed": 31.4
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 30.7
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 28.2
+        }
+      ]
+    },
+    "source_system": "nvidia_jetson_edge_ai"
+  },
+  {
+    "camera_meta": {
+      "device_id": "CAM_SECTION_3_02",
+      "section_id": "section_3",
+      "firmware_ver": "v2.4.1_edge"
+    },
+    "event_time": "2026-07-28 08:30:00",
+    "analytics": {
+      "frame_info": {
+        "fps": 30,
+        "resolution": "1080p"
+      },
+      "summary": {
+        "id": "trf_1785202200000_2_102",
+        "vehicle_count": 241,
+        "avg_speed_kmh": 32.4,
+        "overspeed_flag": false
+      },
+      "sample_detections": [
+        {
+          "vehicle_type": "motorbike",
+          "speed": 31.9
+        },
+        {
+          "vehicle_type": "car",
+          "speed": 33.7
+        },
+        {
+          "vehicle_type": "motorbike",
+          "speed": 35.7
+        }
+      ]
+    },
+    "source_system": "nvidia_jetson_edge_ai"
+  },
+  {
+    "camera_meta": {
+      "device_id": "CAM_SECTION_3_03",
+      "section_id": "section_3",
+      "firmware_ver": "v2.4.1_edge"
+    },
+    "event_time": "2026-07-28 08:30:00",
+    "analytics": {
+      "frame_info": {
+        "fps": 30,
+        "resolution": "1080p"
+      },
+      "summary": {
+        "id": "trf_1785202200000_3_629",
+        "vehicle_count": 238,
+        "avg_speed_kmh": 26.0,
+        "overspeed_flag": false
+      },
+      "sample_detections": [
+        {
+          "vehicle_type": "motorbike",
+          "speed": 24.3
+        },
+        {
+          "vehicle_type": "car",
+          "speed": 23.7
+        },
+        {
+          "vehicle_type": "bicycle",
+          "speed": 29.2
+        }
+      ]
+    },
+    "source_system": "nvidia_jetson_edge_ai"
+  }
+]

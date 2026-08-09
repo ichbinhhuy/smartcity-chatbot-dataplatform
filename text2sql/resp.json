@@ -1,0 +1,9 @@
+{
+  "status": "error",
+  "answer": "Không thể tạo query: Groq API trả về lỗi HTTP 400: tool call validation failed: parameters for tool query_metrics did not match schema: errors: [`/timeDimensions/0/dateRange`: value must be one of \"today\", \"yesterday\", \"this week\", \"last week\", \"this month\", \"last month\", \"this quarter\", \"last quarter\", \"this year\", \"last year\", \"last 7 days\", \"last 30 days\", `/timeDimensions/0/dateRange`: expected array, but got string]",
+  "errors": [
+    "Groq API trả về lỗi HTTP 400: tool call validation failed: parameters for tool query_metrics did not match schema: errors: [`/timeDimensions/0/dateRange`: value must be one of \"today\", \"yesterday\", \"this week\", \"last week\", \"this month\", \"last month\", \"this quarter\", \"last quarter\", \"this year\", \"last year\", \"last 7 days\", \"last 30 days\", `/timeDimensions/0/dateRange`: expected array, but got string]"
+  ],
+  "query": null,
+  "data": []
+}

@@ -1,0 +1,266 @@
+version: '3.8'
+
+services:
+  # ------------------------------------------------------------
+  # 1. MinIO (S3 Lakehouse Storage)
+  # ------------------------------------------------------------
+  minio:
+    image: minio/minio:RELEASE.2023-09-04T19-57-37Z
+    container_name: smartcity_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+    mem_limit: 256m
+
+  # ------------------------------------------------------------
+  # 2. Apache NiFi (Ingestion Engine)
+  # ------------------------------------------------------------
+  nifi:
+    image: apache/nifi:1.23.2
+    container_name: smartcity_nifi
+    ports:
+      - "8080:8080"
+    environment:
+      - NIFI_WEB_HTTP_PORT=8080
+      - NIFI_CLUSTER_IS_NODE=false
+      - SINGLE_USER_CREDENTIALS_USERNAME=admin
+      - SINGLE_USER_CREDENTIALS_PASSWORD=adminadminadmin
+      - NIFI_JVM_HEAP_INIT=512m
+      - NIFI_JVM_HEAP_MAX=1g
+    volumes:
+      - ./landing_zone:/opt/nifi/nifi-current/landing_zone
+      - nifi_conf:/opt/nifi/nifi-current/conf
+    restart: unless-stopped
+    mem_limit: 1.5g
+
+  # ------------------------------------------------------------
+  # 3. StarRocks 3.2 (Real-time OLAP + Iceberg REST Catalog support)
+  # ------------------------------------------------------------
+  starrocks:
+    image: starrocks/allin1-ubuntu:3.2.16
+    container_name: smartcity_starrocks
+    ports:
+      - "9030:9030"  # MySQL Protocol Port
+      - "8030:8030"  # FE Web UI
+      - "8040:8040"  # BE Port
+    volumes:
+      - starrocks_data:/data/starrocks
+    restart: unless-stopped
+    mem_limit: 3g
+
+  # ------------------------------------------------------------
+  # 4. Project Nessie (Iceberg REST Catalog - thay thế Hive Metastore)
+  #    - Không cần PostgreSQL, tự dùng RocksDB nội bộ
+  #    - REST API tại cổng 19120
+  #    - StarRocks kết nối qua: http://nessie:19120/iceberg
+  # ------------------------------------------------------------
+  nessie:
+    image: ghcr.io/projectnessie/nessie:latest
+    container_name: smartcity_nessie
+    ports:
+      - "19120:19120"
+    environment:
+      # Dùng RocksDB lưu metadata nội bộ (không cần DB ngoài)
+      - NESSIE_VERSION_STORE_TYPE=ROCKSDB
+      # Catalog & Warehouse S3 config (Nessie 0.108+)
+      - NESSIE_CATALOG_ENABLED=true
+      - NESSIE_CATALOG_DEFAULT_WAREHOUSE=bronze
+      - NESSIE_CATALOG_WAREHOUSES_BRONZE_LOCATION=s3://bronze/warehouse
+      - NESSIE_CATALOG_SERVICE_S3_DEFAULT_OPTIONS_ENDPOINT=http://minio:9000
+      - NESSIE_CATALOG_SERVICE_S3_DEFAULT_OPTIONS_PATH_STYLE_ACCESS=true
+      - NESSIE_CATALOG_SERVICE_S3_DEFAULT_OPTIONS_REGION=us-east-1
+      # Secrets config cho Nessie 0.108+
+      - NESSIE_CATALOG_SERVICE_S3_DEFAULT_OPTIONS_AUTH_TYPE=STATIC
+      - NESSIE_CATALOG_SERVICE_S3_DEFAULT_OPTIONS_ACCESS_KEY_ID_REF=minio
+      - NESSIE_CATALOG_SERVICE_S3_DEFAULT_OPTIONS_SECRET_ACCESS_KEY_REF=minio
+      - NESSIE_CATALOG_SECRETS_MINIO_ACCESS_KEY=minioadmin
+      - NESSIE_CATALOG_SECRETS_MINIO_SECRET_KEY=minioadmin
+    volumes:
+      - nessie_data:/var/lib/nessie
+    depends_on:
+      - minio
+    restart: unless-stopped
+    mem_limit: 512m
+
+  # ------------------------------------------------------------
+  # 5. Cube.js (Semantic Layer)
+  # ------------------------------------------------------------
+  cube:
+    image: cubejs/cube:v0.34.0
+    container_name: smartcity_cube
+    ports:
+      - "4000:4000"
+      - "15432:15432"
+    environment:
+      - CUBEJS_DEV_MODE=true
+      - CUBEJS_CACHE_AND_QUEUE_DRIVER=memory
+      - CUBEJS_SQL_ENABLE_PUSHDOWN=true
+      - CUBEJS_DB_TYPE=mysql
+      - CUBEJS_DB_HOST=starrocks
+      - CUBEJS_DB_PORT=9030
+      - CUBEJS_DB_NAME=starrocks_gold
+      - CUBEJS_DB_USER=root
+      - CUBEJS_API_SECRET=devsecret
+      - CUBEJS_PG_SQL_PORT=15432
+    volumes:
+      - ./model/cubes:/cube/conf/schema
+      - ./cube.js:/cube/conf/cube.js
+    restart: unless-stopped
+    depends_on:
+      - starrocks
+    mem_limit: 512m
+
+  # ------------------------------------------------------------
+  # 6. Metabase (BI Dashboard)
+  # ------------------------------------------------------------
+  metabase:
+    image: metabase/metabase:v0.47.2
+    container_name: smartcity_metabase
+    ports:
+      - "3000:3000"
+    environment:
+      - MB_DB_TYPE=h2
+      - JAVA_OPTS=-Xms256m -Xmx512m
+    volumes:
+      - metabase_data:/metabase-data
+    restart: unless-stopped
+    mem_limit: 768m
+
+  # ------------------------------------------------------------
+  # 7. PostgreSQL (Metadata Database cho Airflow)
+  # ------------------------------------------------------------
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: smartcity_postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    mem_limit: 256m
+
+  # ------------------------------------------------------------
+  # 8. Apache Airflow Webserver (DAG Orchestrator)
+  # ------------------------------------------------------------
+  airflow-webserver:
+    image: apache/airflow:2.7.1
+    container_name: smartcity_airflow_webserver
+    entrypoint: ["/bin/bash", "-c", "airflow db init && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com && airflow webserver"]
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres@postgres-db/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./mock_engine:/opt/airflow/mock_engine
+      - ./transform:/opt/airflow/transform
+      - ./landing_zone:/opt/airflow/landing_zone
+    ports:
+      - "8082:8080"
+    depends_on:
+      - postgres-db
+    restart: unless-stopped
+    mem_limit: 512m
+
+  # ------------------------------------------------------------
+  # 9. Apache Airflow Scheduler
+  # ------------------------------------------------------------
+  airflow-scheduler:
+    image: apache/airflow:2.7.1
+    container_name: smartcity_airflow_scheduler
+    command: scheduler
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres@postgres-db/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./mock_engine:/opt/airflow/mock_engine
+      - ./transform:/opt/airflow/transform
+      - ./landing_zone:/opt/airflow/landing_zone
+    depends_on:
+      - postgres-db
+    restart: unless-stopped
+    mem_limit: 512m
+
+  # ------------------------------------------------------------
+  # 10. SmartCity Web FE (FastAPI Chatbot & BI Dashboard)
+  # ------------------------------------------------------------
+  web:
+    build:
+      context: ../text2sql_SmartCity-main
+      dockerfile: Dockerfile
+    container_name: smartcity_web
+    ports:
+      - "8000:8000"
+    environment:
+      - CUBE_API_URL=http://cube:4000/cubejs-api/v1
+      - CUBE_API_TOKEN=devsecret
+      - GROQ_API_KEY=${GROQ_API_KEY:-your_groq_api_key_here}
+      - NLU_MODEL=llama-3.3-70b-versatile
+      - NLG_MODEL=llama-3.1-8b-instant
+      - SUPERSET_EMBED_URL=http://localhost:8088/superset/dashboard/1/?standalone=true
+
+
+    volumes:
+      - ../text2sql_SmartCity-main/app:/app/app
+      - ../text2sql_SmartCity-main/semantic:/app/semantic
+      - ../text2sql_SmartCity-main/web:/app/web
+    depends_on:
+      - cube
+    restart: unless-stopped
+    mem_limit: 512m
+
+  # ------------------------------------------------------------
+  # 11. Apache Superset (BI Dashboard Platform)
+  # ------------------------------------------------------------
+  superset:
+    image: apache/superset:3.0.0
+    container_name: smartcity_superset
+    ports:
+      - "8088:8088"
+    environment:
+      - SUPERSET_SECRET_KEY=smartcity_superset_secret_key_2026
+    volumes:
+      - superset_data:/app/superset_home
+    restart: unless-stopped
+    mem_limit: 1g
+
+  # ------------------------------------------------------------
+  # 12. Qdrant Vector Database (Catalog Hybrid Retrieval)
+  # ------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: smartcity_qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+    mem_limit: 512m
+
+volumes:
+  minio_data:
+  nifi_conf:
+  starrocks_data:
+  nessie_data:
+  metabase_data:
+  postgres_data:
+  superset_data:
+  qdrant_storage:

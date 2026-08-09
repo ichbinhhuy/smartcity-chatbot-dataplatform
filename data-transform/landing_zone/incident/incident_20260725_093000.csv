@@ -1,0 +1,2 @@
+incident_id,section_id,incident_type,timestamp_start,duration_min,source_system
+inc_1784946600000,section_3,accident,2026-07-25 09:30:00,90,traffic_police_excel_export

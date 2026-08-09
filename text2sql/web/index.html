@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartCity AI Platform | Urban Command Center</title>
+  
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>
+    :root {
+      --bg-main: #F8FAFC;
+      --bg-card: #FFFFFF;
+      --bg-card-hover: #F1F5F9;
+      --bg-panel: #FFFFFF;
+      --border-color: #E2E8F0;
+      --border-glow: rgba(59, 130, 246, 0.4);
+      
+      /* MEDAL COLORS */
+      --color-bronze: #B45309;
+      --color-bronze-bg: #FEF3C7;
+      --color-bronze-border: #FDE68A;
+      
+      --color-silver: #475569;
+      --color-silver-bg: #F1F5F9;
+      --color-silver-border: #CBD5E1;
+      
+      --color-gold: #A16207;
+      --color-gold-bg: #FEF9C3;
+      --color-gold-border: #FDE047;
+
+      --accent-cyan: #0284C7;
+      --accent-blue: #2563EB;
+      --accent-emerald: #059669;
+      --accent-purple: #7C3AED;
+      --accent-amber: #D97706;
+      --accent-rose: #E11D48;
+      
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --font-family: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(2, 132, 199, 0.05) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(124, 58, 237, 0.05) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(5, 150, 105, 0.04) 0px, transparent 50%);
+      background-attachment: fixed;
+    }
+
+    /* HEADER LIGHT */
+    header {
+      height: 74px;
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: #FFFFFF;
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+    }
+
+    .brand-title {
+      font-weight: 800;
+      font-size: 1.3rem;
+      letter-spacing: -0.5px;
+      color: #0F172A;
+    }
+
+    .brand-subtitle {
+      font-size: 0.72rem;
+      color: var(--accent-blue);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+    }
+
+    /* NAV TABS LIGHT */
+    .nav-tabs {
+      display: flex;
+      background: #F1F5F9;
+      padding: 5px;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      gap: 4px;
+    }
+
+    .tab-btn {
+      padding: 10px 22px;
+      border-radius: 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .tab-btn.active {
+      background: #FFFFFF;
+      color: var(--accent-blue);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+    }
+
+    .tab-btn.active i {
+      color: var(--accent-blue);
+    }
+
+    .tab-btn:hover:not(.active) {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    /* STATUS BADGES */
+    .status-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: #ECFDF5;
+      border: 1px solid #A7F3D0;
+      color: var(--accent-emerald);
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--accent-emerald);
+      box-shadow: 0 0 10px var(--accent-emerald);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* MAIN CONTAINER */
+    main {
+      flex: 1;
+      padding: 2rem;
+      max-width: 1680px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* TAB 1: CHATBOT UI LIGHT */
+    .chat-layout {
+      display: grid;
+      grid-template-columns: 1fr 390px;
+      gap: 1.5rem;
+      height: calc(100vh - 150px);
+    }
+
+    .chat-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 1.75rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      scroll-behavior: smooth;
+    }
+
+    .message {
+      display: flex;
+      gap: 14px;
+      max-width: 88%;
+      animation: messageSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes messageSlide {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+
+    .message.bot .avatar {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+      color: #FFFFFF;
+      box-shadow: 0 4px 15px rgba(124, 58, 237, 0.25);
+    }
+
+    .message.user .avatar {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      color: #FFFFFF;
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);
+    }
+
+    .msg-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .msg-bubble {
+      padding: 1rem 1.4rem;
+      border-radius: 18px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .message.bot .msg-bubble {
+      background: #F1F5F9;
+      border: 1px solid var(--border-color);
+      border-top-left-radius: 4px;
+      color: #0F172A;
+    }
+
+    .message.user .msg-bubble {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      color: #FFFFFF;
+      border-top-right-radius: 4px;
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);
+    }
+
+    .json-accordion {
+      background: #0F172A;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .json-header {
+      padding: 9px 14px;
+      font-size: 0.78rem;
+      font-family: var(--font-mono);
+      color: #38BDF8;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    .json-content {
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: #7DD3FC;
+      background: #020617;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      max-height: 220px;
+      display: none;
+    }
+
+    .json-content.open {
+      display: block;
+    }
+
+    .chat-input-area {
+      padding: 1.25rem 1.75rem;
+      border-top: 1px solid var(--border-color);
+      background: #FFFFFF;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .chat-input {
+      flex: 1;
+      background: #F8FAFC;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px 18px;
+      color: #0F172A;
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .chat-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.15);
+      background: #FFFFFF;
+    }
+
+    .send-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      border: none;
+      color: #FFFFFF;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    }
+
+    /* SIDEBAR LIGHT */
+    .chat-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .sidebar-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 22px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    }
+
+    .sidebar-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .prompt-pill {
+      background: #F8FAFC;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .prompt-pill:hover {
+      background: #EFF6FF;
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+      transform: translateX(4px);
+    }
+
+    /* TAB 2: BI DASHBOARD LIGHT */
+    .superset-frame-wrap {
+      display: block;
+      height: calc(100vh - 150px);
+      min-height: 720px;
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      overflow: hidden;
+      background: #FFFFFF;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    }
+
+    .superset-frame {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #FFFFFF;
+    }
+
+    /* TAB 3: MEDAL COLOR DATA LINEAGE DAG GRAPH & INLINE DETAILS */
+    .lineage-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      position: relative;
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.04);
+    }
+
+    .section-header {
+      margin-bottom: 1.75rem;
+    }
+
+    .section-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #0F172A;
+    }
+
+    .section-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* DAG GRAPH CONTAINER */
+    .dag-container {
+      position: relative;
+      background: #F8FAFC;
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 2.5rem 2rem;
+      min-height: 500px;
+      overflow: hidden;
+    }
+
+    .svg-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .dag-grid-3col {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      width: 100%;
+      position: relative;
+      z-index: 2;
+    }
+
+    .dag-col {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 28%;
+      min-width: 260px;
+    }
+
+    .dag-nodes-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      flex: 1;
+    }
+
+    .dag-nodes-wrap.center-nodes {
+      justify-content: center;
+      padding-top: 1.8rem;
+    }
+
+
+
+    .col-header {
+      font-size: 0.88rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 8px 14px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* MEDAL COLUMNS HEADERS */
+    .col-header.bronze {
+      color: var(--color-bronze);
+      background: var(--color-bronze-bg);
+      border: 1px solid var(--color-bronze-border);
+    }
+
+    .col-header.silver {
+      color: var(--color-silver);
+      background: var(--color-silver-bg);
+      border: 1px solid var(--color-silver-border);
+    }
+
+    .col-header.gold {
+      color: var(--color-gold);
+      background: var(--color-gold-bg);
+      border: 1px solid var(--color-gold-border);
+    }
+
+    /* MEDAL NODE BUTTONS */
+    .dbt-node-btn {
+      background: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px 18px;
+      color: #0F172A;
+      font-size: 0.88rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+      position: relative;
+    }
+
+    .dbt-node-btn:hover {
+      transform: scale(1.03);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    /* 🥉 BRONZE NODE */
+    .dbt-node-btn.bronze {
+      border-left: 5px solid #D97706;
+    }
+    .dbt-node-btn.bronze .node-tag {
+      background: #FEF3C7;
+      color: #B45309;
+      border: 1px solid #FDE68A;
+    }
+
+    /* 🥈 SILVER NODE */
+    .dbt-node-btn.silver {
+      border-left: 5px solid #64748B;
+    }
+    .dbt-node-btn.silver .node-tag {
+      background: #F1F5F9;
+      color: #475569;
+      border: 1px solid #CBD5E1;
+    }
+
+    /* 🥇 GOLD NODE */
+    .dbt-node-btn.gold {
+      border-left: 5px solid #EAB308;
+    }
+    .dbt-node-btn.gold .node-tag {
+      background: #FEF9C3;
+      color: #A16207;
+      border: 1px solid #FDE047;
+    }
+
+    /* SELECTED MEDAL NODES GLOW */
+    .dbt-node-btn.bronze.selected {
+      border-color: #D97706 !important;
+      background: #FEF3C7 !important;
+      box-shadow: 0 0 25px rgba(217, 119, 6, 0.35) !important;
+    }
+
+    .dbt-node-btn.silver.selected {
+      border-color: #64748B !important;
+      background: #F1F5F9 !important;
+      box-shadow: 0 0 25px rgba(100, 116, 139, 0.35) !important;
+    }
+
+    .dbt-node-btn.gold.selected {
+      border-color: #EAB308 !important;
+      background: #FEF9C3 !important;
+      box-shadow: 0 0 25px rgba(234, 179, 8, 0.45) !important;
+    }
+
+    .node-tag {
+      font-size: 0.68rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+    }
+
+    /* INLINE DETAILS PANEL BELOW DAG GRAPH */
+    .inline-details-panel {
+      margin-top: 1.75rem;
+      background: #FFFFFF;
+      border: 2px solid var(--color-silver-border);
+      border-radius: 20px;
+      padding: 1.75rem;
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.06);
+      animation: fadeIn 0.3s ease-out;
+      transition: all 0.3s ease;
+    }
+
+    /* MEDAL THEME PANEL VARIATIONS */
+    .inline-details-panel.panel-bronze {
+      border-color: #FDE68A;
+      background: #FFFBEE;
+    }
+    .inline-details-panel.panel-silver {
+      border-color: #CBD5E1;
+      background: #F8FAFC;
+    }
+    .inline-details-panel.panel-gold {
+      border-color: #FDE047;
+      background: #FEFDF0;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .panel-title-text {
+      font-size: 1.2rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panel-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .details-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .details-table th, .details-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      text-align: left;
+    }
+
+    .details-table th {
+      background: #F1F5F9;
+      color: #334155;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    /* MEDAL CONSTRAINT VALIDATION PILLS */
+    .constraint-badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 4px 9px;
+      border-radius: 6px;
+      font-weight: 700;
+      display: inline-block;
+    }
+
+    .constraint-badge.bronze-constraint {
+      background: #FEF3C7;
+      color: #B45309;
+      border: 1px solid #FDE68A;
+    }
+
+    .constraint-badge.silver-constraint {
+      background: #F1F5F9;
+      color: #334155;
+      border: 1px solid #CBD5E1;
+    }
+
+    .constraint-badge.gold-constraint {
+      background: #FEF9C3;
+      color: #A16207;
+      border: 1px solid #FDE047;
+    }
+
+    /* DICTIONARY CONTROLS & TABLE LIGHT */
+    .dictionary-controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .search-input {
+      flex: 1;
+      background: #F8FAFC;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px 18px;
+      color: #0F172A;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.15);
+      background: #FFFFFF;
+    }
+
+    .select-cube {
+      background: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px 18px;
+      color: #0F172A;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .select-cube option {
+      background-color: #FFFFFF !important;
+      color: #0F172A !important;
+      padding: 10px;
+    }
+
+    .dict-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .dict-table th, .dict-table td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .dict-table th {
+      background: #F1F5F9;
+      font-weight: 700;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+    }
+
+    .dict-table tr:hover {
+      background: #F8FAFC;
+    }
+
+    .type-pill {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .type-measure { background: #F3E8FF; color: #7E22CE; border: 1px solid #D8B4FE; }
+    .type-dimension { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+    .type-time { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+
+  </style>
+</head>
+<body>
+
+  <!-- HEADER LIGHT -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">
+        <i class="fa-solid fa-city"></i>
+      </div>
+      <div>
+        <div class="brand-title">SmartCity AI Platform</div>
+        <div class="brand-subtitle">Urban Command Center</div>
+      </div>
+    </div>
+
+    <!-- NAV TABS LIGHT -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" id="btn-chat" onclick="switchTab('chat')">
+        <i class="fa-solid fa-robot"></i> AI Assistant
+      </button>
+      <button class="tab-btn" id="btn-dashboard" onclick="switchTab('dashboard')">
+        <i class="fa-solid fa-chart-pie"></i> BI Dashboard
+      </button>
+      <button class="tab-btn" id="btn-lineage" onclick="switchTab('lineage')">
+        <i class="fa-solid fa-diagram-project"></i> Data Lineage &amp; Catalog
+      </button>
+    </nav>
+
+    <!-- LIVE STATUS BADGES -->
+    <div class="status-group">
+      <div class="badge">
+        <div class="badge-dot"></div> Groq LLM (Llama 3.3 70B)
+      </div>
+      <div class="badge">
+        <div class="badge-dot"></div> Cube Core (Port 4000)
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- TAB 1: AI CHATBOT -->
+    <div id="tab-chat" class="tab-content active">
+      <div class="chat-layout">
+        <div class="chat-container">
+          <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+              <div class="avatar"><i class="fa-solid fa-brain"></i></div>
+              <div class="msg-body">
+                <div class="msg-bubble">
+                  Xin chào! Tôi là <strong>Trợ lý AI Smart City (Text2SQL Agent)</strong>. Bạn có thể hỏi tôi bất kỳ thông tin nào về chất lượng không khí AQI, lưu lượng giao thông, bãi đỗ xe hoặc chiếu sáng đô thị bằng tiếng Việt tự nhiên!
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-input-area">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Nhập câu hỏi tiếng Việt (vd: So sánh chỉ số đáng sống Livability của 3 phân đoạn đường)..." onkeydown="if(event.key==='Enter') sendMessage()">
+            <button class="send-btn" onclick="sendMessage()">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- SIDEBAR SUGGESTIONS -->
+        <div class="chat-sidebar">
+          <div class="sidebar-card">
+            <div class="sidebar-title">
+              <i class="fa-solid fa-lightbulb" style="color: var(--accent-amber);"></i> Gợi ý câu hỏi nhanh
+            </div>
+            <div class="prompt-pill" onclick="sendPrompt('So sánh chỉ số đáng sống Livability 3 phân đoạn đường')">
+              <span>Xếp hạng Livability 3 đường</span>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+            <div class="prompt-pill" onclick="sendPrompt('Tốc độ giao thông trung bình ở SEC_001 là bao nhiêu?')">
+              <span>Tốc độ giao thông SEC_001</span>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+            <div class="prompt-pill" onclick="sendPrompt('Chất lượng không khí AQI và PM2.5 ở SEC_003?')">
+              <span>Chỉ số AQI SEC_003</span>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+            <div class="prompt-pill" onclick="sendPrompt('Tỷ lệ lấp đầy bãi đỗ xe hiện tại thế nào?')">
+              <span>Bãi đỗ xe thông minh</span>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </div>
+
+          <div class="sidebar-card">
+            <div class="sidebar-title">
+              <i class="fa-solid fa-shield-halved" style="color: var(--accent-emerald);"></i> Luồng xử lý An toàn
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+              LLM sử dụng <strong>Function Calling</strong> để sinh Structured Query JSON. Mọi truy vấn được validate chặt chẽ trước khi Cube Core tự động biên dịch sang SQL trên StarRocks DW.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: APACHE SUPERSET BI DASHBOARD -->
+    <div id="tab-dashboard" class="tab-content">
+      <div id="supersetFrameWrap" class="superset-frame-wrap">
+        <iframe id="supersetFrame" class="superset-frame" title="Apache Superset BI Dashboard Overview" allowfullscreen="true" src="http://localhost:8088/superset/dashboard/1/?standalone=true"></iframe>
+      </div>
+    </div>
+
+    <!-- TAB 3: DATA LINEAGE MEDAL COLORS & CATALOG -->
+    <div id="tab-lineage" class="tab-content">
+      <!-- DAG GRAPH WITH CONNECTORS -->
+      <div class="lineage-section">
+        <div class="section-header">
+          <div class="section-title"><i class="fa-solid fa-route" style="color: var(--accent-blue);"></i> dbt Data Lineage DAG Graph (Medal Color System)</div>
+          <div class="section-desc">Sơ đồ Luồng liên kết Dữ liệu 3 Lớp Medallion tương ứng màu Huy chương (🥉 <strong>Bronze (Đồng)</strong> ➔ 🥈 <strong>Silver (Bạc)</strong> ➔ 🥇 <strong>Gold (Vàng)</strong>). <strong>Click vào Bảng bất kỳ để xem danh sách trường &amp; ràng buộc BÊN DƯỚI!</strong></div>
+        </div>
+
+        <!-- DAG CONTAINER WITH SVG CONNECTORS -->
+        <div class="dag-container" id="dagContainer">
+          <svg class="svg-canvas" id="svgCanvas">
+            <defs>
+              <marker id="arrow-bronze" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#D97706"></path>
+              </marker>
+              <marker id="arrow-silver" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"></path>
+              </marker>
+              <marker id="arrow-gold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#EAB308"></path>
+              </marker>
+            </defs>
+          </svg>
+
+          <div class="dag-grid-3col">
+            <!-- BRONZE COLUMN (ĐỒNG) -->
+            <div class="dag-col">
+              <div class="col-header bronze"><i class="fa-solid fa-award"></i> 🥉 Bronze Layer (Đồng)</div>
+              <div class="dag-nodes-wrap center-nodes">
+                <div id="node_bronze_environment" class="dbt-node-btn bronze" onclick="selectNode('bronze_environment')">
+                  <span>bronze.bronze_environment</span>
+                  <span class="node-tag">table</span>
+                </div>
+                <div id="node_bronze_parking" class="dbt-node-btn bronze" onclick="selectNode('bronze_parking')">
+                  <span>bronze.bronze_parking</span>
+                  <span class="node-tag">table</span>
+                </div>
+                <div id="node_bronze_incident" class="dbt-node-btn bronze" onclick="selectNode('bronze_incident')">
+                  <span>bronze.bronze_incident</span>
+                  <span class="node-tag">table</span>
+                </div>
+                <div id="node_bronze_lighting" class="dbt-node-btn bronze" onclick="selectNode('bronze_lighting')">
+                  <span>bronze.bronze_lighting</span>
+                  <span class="node-tag">table</span>
+                </div>
+                <div id="node_bronze_traffic" class="dbt-node-btn bronze" onclick="selectNode('bronze_traffic')">
+                  <span>bronze.bronze_traffic</span>
+                  <span class="node-tag">table</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SILVER COLUMN (BẠC) -->
+            <div class="dag-col">
+              <div class="col-header silver"><i class="fa-solid fa-award"></i> 🥈 Silver Layer (Bạc)</div>
+              <div class="dag-nodes-wrap center-nodes">
+                <div id="node_silver_environment" class="dbt-node-btn silver" onclick="selectNode('silver_environment')">
+                  <span>silver_environment</span>
+                  <span class="node-tag">model</span>
+                </div>
+                <div id="node_silver_parking" class="dbt-node-btn silver" onclick="selectNode('silver_parking')">
+                  <span>silver_parking</span>
+                  <span class="node-tag">model</span>
+                </div>
+                <div id="node_silver_incident" class="dbt-node-btn silver" onclick="selectNode('silver_incident')">
+                  <span>silver_incident</span>
+                  <span class="node-tag">model</span>
+                </div>
+                <div id="node_silver_lighting" class="dbt-node-btn silver" onclick="selectNode('silver_lighting')">
+                  <span>silver_lighting</span>
+                  <span class="node-tag">model</span>
+                </div>
+                <div id="node_silver_traffic" class="dbt-node-btn silver" onclick="selectNode('silver_traffic')">
+                  <span>silver_traffic</span>
+                  <span class="node-tag">model</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- GOLD COLUMN (VÀNG) -->
+            <div class="dag-col">
+              <div class="col-header gold"><i class="fa-solid fa-award"></i> 🥇 Gold Layer (Vàng)</div>
+              <div class="dag-nodes-wrap">
+                <div id="node_fact_environment" class="dbt-node-btn gold" onclick="selectNode('fact_environment')">
+                  <span>fact_environment</span>
+                  <span class="node-tag">fact</span>
+                </div>
+                <div id="node_fact_parking" class="dbt-node-btn gold" onclick="selectNode('fact_parking')">
+                  <span>fact_parking</span>
+                  <span class="node-tag">fact</span>
+                </div>
+                <div id="node_gold_street_livability_daily" class="dbt-node-btn gold" onclick="selectNode('gold_street_livability_daily')">
+                  <span>gold_street_livability_daily</span>
+                  <span class="node-tag">mview</span>
+                </div>
+                <div id="node_fact_incident" class="dbt-node-btn gold" onclick="selectNode('fact_incident')">
+                  <span>fact_incident</span>
+                  <span class="node-tag">fact</span>
+                </div>
+                <div id="node_fact_lighting" class="dbt-node-btn gold" onclick="selectNode('fact_lighting')">
+                  <span>fact_lighting</span>
+                  <span class="node-tag">fact</span>
+                </div>
+                <div id="node_fact_traffic" class="dbt-node-btn gold" onclick="selectNode('fact_traffic')">
+                  <span>fact_traffic</span>
+                  <span class="node-tag">fact</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- INLINE TABLE DETAILS PANEL BELOW DAG -->
+        <div class="inline-details-panel panel-silver" id="inlinePanel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title-text" id="pTableTitle"><i class="fa-solid fa-table"></i> Bảng được chọn: silver_parking</div>
+              <div class="panel-subtitle" id="pTableSub">Database: starrocks_silver | Layer: Cleaned Table</div>
+            </div>
+            <span style="font-size: 0.8rem; color: var(--accent-blue); font-family: var(--font-mono);"><i class="fa-solid fa-mouse-pointer"></i> Click vào bảng trên DAG để chuyển đổi</span>
+          </div>
+
+          <div style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-list-check" style="color: var(--accent-blue);"></i> Danh sách Trường &amp; Ràng buộc (Columns &amp; Constraints)
+          </div>
+
+          <table class="details-table">
+            <thead>
+              <tr>
+                <th>Column Name</th>
+                <th>Data Type</th>
+                <th>Constraint / Validation</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody id="pColsBody">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+
+          <div style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-shield-cat" style="color: var(--accent-emerald);"></i> Quy tắc Biến đổi &amp; Data Quality Rules
+          </div>
+          <ul id="pRulesList" style="padding-left: 1.25rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+            <!-- Dynamically rendered -->
+          </ul>
+        </div>
+      </div>
+
+      <!-- DATA DICTIONARY -->
+      <div class="lineage-section">
+        <div class="section-header">
+          <div class="section-title"><i class="fa-solid fa-book-bookmark" style="color: var(--accent-emerald);"></i> Data Dictionary &amp; Catalog Schema</div>
+          <div class="section-desc">Danh mục tra cứu Data Cubes thực tế trong hệ thống đô thị thông minh</div>
+        </div>
+
+        <div class="dictionary-controls">
+          <input type="text" id="dictSearch" class="search-input" placeholder="Tìm kiếm tên chỉ số, chiều hoặc mô tả..." oninput="filterDictionary()">
+          <select id="dictCubeFilter" class="select-cube" onchange="filterDictionary()">
+            <option value="all">Tất cả Data Cubes</option>
+          </select>
+        </div>
+
+        <table class="dict-table">
+          <thead>
+            <tr>
+              <th>Member Name</th>
+              <th>Data Cube</th>
+              <th>Role Type</th>
+              <th>Data Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody id="dictTableBody">
+            <!-- Dynamically rendered from /api/catalog -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // TAB SWITCHING
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+      document.getElementById('tab-' + tabId).classList.add('active');
+      document.getElementById('btn-' + tabId).classList.add('active');
+
+      if (tabId === 'lineage') {
+        loadLineageGraph();
+        loadCatalogData();
+        setTimeout(drawSvgLines, 100);
+      }
+    }
+
+    // DYNAMIC SVG DAG CONNECTOR ARROWS (MEDAL COLORS)
+    function drawSvgLines() {
+      const svg = document.getElementById('svgCanvas');
+      const container = document.getElementById('dagContainer');
+      if (!svg || !container) return;
+
+      const containerRect = container.getBoundingClientRect();
+      
+      const defs = svg.querySelector('defs');
+      svg.innerHTML = '';
+      if (defs) svg.appendChild(defs);
+
+      const connections = [
+        ['bronze_environment', 'silver_environment', 'bronze'],
+        ['bronze_parking', 'silver_parking', 'bronze'],
+        ['bronze_incident', 'silver_incident', 'bronze'],
+        ['bronze_lighting', 'silver_lighting', 'bronze'],
+        ['bronze_traffic', 'silver_traffic', 'bronze'],
+
+        ['silver_environment', 'fact_environment', 'silver'],
+        ['silver_parking', 'fact_parking', 'silver'],
+        ['silver_incident', 'fact_incident', 'silver'],
+        ['silver_lighting', 'fact_lighting', 'silver'],
+        ['silver_traffic', 'fact_traffic', 'silver'],
+
+        ['silver_environment', 'gold_street_livability_daily', 'gold'],
+        ['silver_parking', 'gold_street_livability_daily', 'gold'],
+        ['silver_incident', 'gold_street_livability_daily', 'gold'],
+        ['silver_lighting', 'gold_street_livability_daily', 'gold'],
+        ['silver_traffic', 'gold_street_livability_daily', 'gold']
+      ];
+
+      connections.forEach(([srcId, tgtId, layerType]) => {
+        const srcElem = document.getElementById('node_' + srcId);
+        const tgtElem = document.getElementById('node_' + tgtId);
+        if (!srcElem || !tgtElem) return;
+
+        const srcRect = srcElem.getBoundingClientRect();
+        const tgtRect = tgtElem.getBoundingClientRect();
+
+        const x1 = srcRect.right - containerRect.left;
+        const y1 = srcRect.top + srcRect.height / 2 - containerRect.top;
+        const x2 = tgtRect.left - containerRect.left;
+        const y2 = tgtRect.top + tgtRect.height / 2 - containerRect.top;
+
+        const dx = (x2 - x1) / 2;
+        const pathD = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x1 + dx} ${y2}, ${x2} ${y2}`;
+
+        let strokeColor = '#64748B';
+        let markerId = 'arrow-silver';
+
+        if (layerType === 'bronze') {
+          strokeColor = '#D97706';
+          markerId = 'arrow-bronze';
+        } else if (layerType === 'gold') {
+          strokeColor = '#EAB308';
+          markerId = 'arrow-gold';
+        }
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathD);
+        path.setAttribute('stroke', strokeColor);
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('marker-end', `url(#${markerId})`);
+        svg.appendChild(path);
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      if (document.getElementById('tab-lineage').classList.contains('active')) {
+        drawSvgLines();
+      }
+    });
+
+    // CHATBOT LOGIC
+    function sendPrompt(text) {
+      document.getElementById('chatInput').value = text;
+      sendMessage();
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      appendUserMessage(text);
+      const loadingId = appendLoadingMessage();
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: text })
+        });
+        const data = await res.json();
+        removeMessage(loadingId);
+        appendBotMessage(data.answer, data.query);
+      } catch (err) {
+        removeMessage(loadingId);
+        appendBotMessage('Lỗi kết nối tới Server Web FE. Vui lòng kiểm tra lại dịch vụ!', null);
+      }
+    }
+
+    function appendUserMessage(text) {
+      const container = document.getElementById('chatMessages');
+      const msg = document.createElement('div');
+      msg.className = 'message user';
+      msg.innerHTML = `
+        <div class="avatar"><i class="fa-solid fa-user"></i></div>
+        <div class="msg-body">
+          <div class="msg-bubble">${text}</div>
+        </div>
+      `;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function appendBotMessage(answer, queryObj) {
+      const container = document.getElementById('chatMessages');
+      const msg = document.createElement('div');
+      msg.className = 'message bot';
+
+      let accordionHtml = '';
+      if (queryObj) {
+        accordionHtml = `
+          <div class="json-accordion">
+            <div class="json-header" onclick="this.nextElementSibling.classList.toggle('open')">
+              <span><i class="fa-solid fa-code"></i> Structured Cube Query JSON</span>
+              <i class="fa-solid fa-chevron-down"></i>
+            </div>
+            <div class="json-content">${JSON.stringify(queryObj, null, 2)}</div>
+          </div>
+        `;
+      }
+
+      msg.innerHTML = `
+        <div class="avatar"><i class="fa-solid fa-brain"></i></div>
+        <div class="msg-body">
+          <div class="msg-bubble">${answer}</div>
+          ${accordionHtml}
+        </div>
+      `;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function appendLoadingMessage() {
+      const id = 'loading-' + Date.now();
+      const container = document.getElementById('chatMessages');
+      const msg = document.createElement('div');
+      msg.id = id;
+      msg.className = 'message bot';
+      msg.innerHTML = `
+        <div class="avatar"><i class="fa-solid fa-brain"></i></div>
+        <div class="msg-body">
+          <div class="msg-bubble"><i class="fa-solid fa-spinner fa-spin" style="color: var(--accent-blue);"></i> Đang phân tích truy vấn từ Cube Core...</div>
+        </div>
+      `;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+      return id;
+    }
+
+    function removeMessage(id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    }
+
+    // LINEAGE GRAPH & DETAILS PANEL LOADER
+    let lineageGraphData = null;
+
+    async function loadLineageGraph() {
+      if (lineageGraphData) return;
+      try {
+        const res = await fetch('/api/lineage_graph');
+        lineageGraphData = await res.json();
+        
+        // Auto select silver_parking as default
+        selectNode('silver_parking');
+        setTimeout(drawSvgLines, 100);
+      } catch (err) {
+        console.error('Error loading lineage graph:', err);
+      }
+    }
+
+    function selectNode(nodeId) {
+      if (!lineageGraphData) return;
+
+      // Unselect all nodes
+      document.querySelectorAll('.dbt-node-btn').forEach(btn => btn.classList.remove('selected'));
+
+      // Highlight selected node
+      const nodeElem = document.getElementById('node_' + nodeId);
+      if (nodeElem) nodeElem.classList.add('selected');
+
+      // Find node object and layer type
+      let targetNode = null;
+      let layerType = 'silver';
+
+      lineageGraphData.columns.forEach(col => {
+        col.nodes.forEach(n => {
+          if (n.id === nodeId) {
+            targetNode = n;
+            if (col.layer.toLowerCase().includes('bronze')) layerType = 'bronze';
+            else if (col.layer.toLowerCase().includes('silver')) layerType = 'silver';
+            else if (col.layer.toLowerCase().includes('gold')) layerType = 'gold';
+          }
+        });
+      });
+
+      if (!targetNode) return;
+
+      // Update Panel Medal Theme
+      const panel = document.getElementById('inlinePanel');
+      panel.className = `inline-details-panel panel-${layerType}`;
+
+      let titleColor = '#64748B';
+      let constraintClass = 'silver-constraint';
+
+      if (layerType === 'bronze') {
+        titleColor = '#B45309';
+        constraintClass = 'bronze-constraint';
+      } else if (layerType === 'gold') {
+        titleColor = '#A16207';
+        constraintClass = 'gold-constraint';
+      }
+
+      // Update Panel Info
+      document.getElementById('pTableTitle').innerHTML = `<i class="fa-solid fa-table" style="color: ${titleColor};"></i> Bảng được chọn: <span style="color: ${titleColor};">${targetNode.name}</span>`;
+      document.getElementById('pTableSub').innerText = `Database: ${targetNode.db} | Layer: ${targetNode.type}`;
+
+      // Update Columns Table with Medal Colored Constraint Pills
+      const tbody = document.getElementById('pColsBody');
+      tbody.innerHTML = '';
+      if (targetNode.columns && targetNode.columns.length > 0) {
+        targetNode.columns.forEach(c => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-family: var(--font-mono); font-weight: 600; color: #0F172A;">${c.name}</td>
+            <td style="font-family: var(--font-mono); color: var(--accent-blue);">${c.type}</td>
+            <td><span class="constraint-badge ${constraintClass}">${c.constraint}</span></td>
+            <td style="color: var(--text-muted);">${c.desc}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      // Update Rules List
+      const rulesUl = document.getElementById('pRulesList');
+      rulesUl.innerHTML = '';
+      if (targetNode.rules && targetNode.rules.length > 0) {
+        targetNode.rules.forEach(r => {
+          const li = document.createElement('li');
+          li.innerText = r;
+          rulesUl.appendChild(li);
+        });
+      } else {
+        rulesUl.innerHTML = '<li>Không có quy tắc biến đổi bổ sung.</li>';
+      }
+    }
+
+    // CATALOG DATA LOADER
+    let rawCatalogItems = [];
+
+    async function loadCatalogData() {
+      if (rawCatalogItems.length > 0) return;
+      try {
+        const res = await fetch('/api/catalog');
+        const data = await res.json();
+        
+        const filterSelect = document.getElementById('dictCubeFilter');
+        filterSelect.innerHTML = '<option value="all">Tất cả Data Cubes</option>';
+
+        data.cubes.forEach(cube => {
+          const opt = document.createElement('option');
+          opt.value = cube.name;
+          opt.innerText = `${cube.title || cube.name} (${cube.name})`;
+          filterSelect.appendChild(opt);
+
+          cube.measures.forEach(m => {
+            rawCatalogItems.push({
+              name: `${cube.name}.${m.name}`,
+              cube: cube.name,
+              type: 'measure',
+              dataType: m.type,
+              desc: m.description || m.title || m.name
+            });
+          });
+
+          cube.dimensions.forEach(d => {
+            rawCatalogItems.push({
+              name: `${cube.name}.${d.name}`,
+              cube: cube.name,
+              type: 'dimension',
+              dataType: d.type,
+              desc: d.description || d.title || d.name
+            });
+          });
+
+          cube.time_dimensions.forEach(t => {
+            rawCatalogItems.push({
+              name: `${cube.name}.${t.name}`,
+              cube: cube.name,
+              type: 'time',
+              dataType: t.type,
+              desc: t.description || t.title || t.name
+            });
+          });
+        });
+
+        renderCatalogTable(rawCatalogItems);
+      } catch (err) {
+        console.error('Lỗi tải catalog schema:', err);
+      }
+    }
+
+    function renderCatalogTable(items) {
+      const tbody = document.getElementById('dictTableBody');
+      tbody.innerHTML = '';
+      items.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="font-family: var(--font-mono); font-weight: 600; color: #0F172A;">${item.name}</td>
+          <td style="color: var(--accent-blue); font-weight: 600;">${item.cube}</td>
+          <td><span class="type-pill type-${item.type}">${item.type}</span></td>
+          <td style="font-family: var(--font-mono); color: var(--text-muted);">${item.dataType}</td>
+          <td style="color: var(--text-muted);">${item.desc}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterDictionary() {
+      const search = document.getElementById('dictSearch').value.toLowerCase();
+      const selectedCube = document.getElementById('dictCubeFilter').value;
+
+      const filtered = rawCatalogItems.filter(item => {
+        const matchesSearch = item.name.toLowerCase().includes(search) || item.desc.toLowerCase().includes(search);
+        const matchesCube = selectedCube === 'all' || item.cube === selectedCube;
+        return matchesSearch && matchesCube;
+      });
+
+      renderCatalogTable(filtered);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# sources.yml - Khai bao cac bang Bronze trong starrocks_bronze
+# de dbt biet nguon du lieu dau vao cho cac Silver models
+version: 2
+
+sources:
+  - name: bronze
+    schema: starrocks_bronze
+    description: "Raw audit tables — Bronze Layer. Không sửa, chỉ đọc."
+    tables:
+      - name: bronze_traffic
+        description: "Camera AI traffic events (JSON). Có thể chứa event_id trùng lặp."
+      - name: bronze_parking
+        description: "Smart Parking gateway events (MQTT JSON). Có thể có occupied_slots > slot_total."
+      - name: bronze_environment
+        description: "AQI/PM2.5/Noise sensor events (REST API). Có thể có AQI < 0."
+      - name: bronze_lighting
+        description: "Smart Lighting SCADA events (XML). power_kwh có thể NULL."
+      - name: bronze_incident
+        description: "Incident CSV reports. Ít bản ghi, không có lỗi schema."

@@ -14,57 +14,45 @@ from datetime import date
 from app.catalog.models import Catalog
 
 _RULES = """\
-# Nhiệm vụ
-Bạn là trợ lý phân tích dữ liệu của nền tảng Smart City. Nhiệm vụ duy nhất của bạn
-là chuyển câu hỏi tiếng Việt hoặc tiếng Anh của người dùng thành một lời gọi tool
-`query_metrics` có tham số chính xác. Bạn KHÔNG viết SQL và KHÔNG tự bịa số liệu.
+# Role
+Smart City NLU Assistant. Convert natural language questions into precise `query_metrics` tool calls.
 
-# Quy tắc bắt buộc
-1. Chỉ dùng đúng tên measure và dimension có trong danh mục bên dưới. Không tự đặt tên mới.
-2. Tất cả measure trong một lần gọi tool phải cùng một cube (cùng tiền tố trước dấu chấm).
-   Nếu câu hỏi cần measure từ nhiều cube khác nhau, hãy hỏi lại người dùng muốn xem cube nào trước.
-3. Lọc theo thời gian luôn dùng `timeDimensions`, không đưa vào `filters`.
-4. Nếu người dùng không nói gì về thời gian, bỏ trống `timeDimensions`; hệ thống sẽ áp mặc định
-   và hiển thị rõ cho người dùng biết.
-5. Nếu câu hỏi mơ hồ, thiếu thông tin, hoặc nằm ngoài danh mục dữ liệu bên dưới:
-   ĐỪNG gọi tool. Hãy trả lời bằng một câu hỏi ngắn gọn để làm rõ, và nêu các lựa chọn
-   gần nhất có trong danh mục. Đây là quy tắc quan trọng nhất — đoán bừa tệ hơn hỏi lại.
-6. Với câu hỏi dạng "top N", đặt `limit` và `order` thay vì mô tả bằng lời.
-7. Giá trị filter hãy giữ nguyên như người dùng viết (đặt trong `values`, kể cả khi
-   chỉ có một giá trị). Hệ thống sẽ tự đối chiếu với giá trị thật trong cơ sở dữ liệu.
+# Rules
+1. Only use measures, dimensions, and timeDimensions present in the catalog below.
+2. All measures in a single tool call MUST belong to the SAME cube.
+3. Time filtering MUST use `timeDimensions` (e.g., `air_quality.recorded_at`, `traffic_flow.recorded_at`, `city_health_index.date`, `smart_parking.recorded_at`, `smart_lighting.recorded_at`, `street_incidents.timestamp_start`).
+4. If no time range is specified, leave `timeDimensions` empty (system applies default).
+5. Preserve filter value names as written by user; system auto-maps section aliases (`Khu biet thu`, `Can ho`, `TTTM`).
 """
 
 
-def build_catalog_markdown(catalog: Catalog) -> str:
-    """Mô tả catalog dưới dạng text cho LLM đọc."""
-    lines: list[str] = ["# Danh mục dữ liệu"]
+def build_catalog_markdown(catalog: Catalog, candidates: dict[str, list[str]] | None = None) -> str:
+    """Mô tả catalog rút gọn tối ưu token cho LLM, hỗ trợ lọc theo Top-K candidates."""
+    lines: list[str] = ["# Catalog (Top-K Selected)"]
+    cand_measures = set(candidates.get("measures", [])) if candidates else None
+    cand_dimensions = set(candidates.get("dimensions", [])) if candidates else None
+    cand_cubes = set(candidates.get("cubes", [])) if candidates else None
 
-    for cube in catalog.cubes:
-        lines.append(f"\n## Cube `{cube.name}` — {cube.title}")
+    for c in catalog.cubes:
+        if cand_cubes and c.name not in cand_cubes:
+            continue
 
-        lines.append("Measures:")
-        for m in cube.measures:
-            desc = f": {m.description}" if m.description else ""
-            lines.append(f"  - `{m.name}`{desc}")
+        m_list = [m.name for m in c.measures if cand_measures is None or m.name in cand_measures]
+        d_list = [d.name for d in c.dimensions if cand_dimensions is None or d.name in cand_dimensions]
+        t_list = [t.name for t in c.time_dimensions]
 
-        if cube.dimensions:
-            lines.append("Dimensions:")
-            for d in cube.dimensions:
-                desc = f": {d.description}" if d.description else ""
-                lines.append(f"  - `{d.name}`{desc}")
+        if not m_list and not d_list:
+            continue
 
-        if cube.time_dimensions:
-            lines.append("Time dimensions:")
-            for t in cube.time_dimensions:
-                desc = f": {t.description}" if t.description else ""
-                lines.append(f"  - `{t.name}`{desc}")
-
+        lines.append(f"Cube `{c.name}` ({c.title}):")
+        if m_list: lines.append(f"  Measures: {', '.join(m_list)}")
+        if d_list: lines.append(f"  Dimensions: {', '.join(d_list)}")
+        if t_list: lines.append(f"  TimeDimensions: {', '.join(t_list)}")
     return "\n".join(lines)
 
 
-def build_system_prompt(catalog: Catalog) -> str:
-    """Phần ổn định của prompt — an toàn để cache."""
-    return f"{_RULES}\n{build_catalog_markdown(catalog)}"
+def build_system_prompt(catalog: Catalog, candidates: dict[str, list[str]] | None = None) -> str:
+    return f"{_RULES}\n{build_catalog_markdown(catalog, candidates)}"
 
 
 def build_runtime_context(

@@ -122,6 +122,8 @@ class QueryValidator:
     ) -> None:
         names = set(self.catalog.time_dimension_names())
         for td in query.timeDimensions:
+            if isinstance(td.dateRange, list):
+                td.dateRange = td.dateRange[0] if td.dateRange else None
             if td.dimension not in names:
                 errors.append(
                     f"Time dimension '{td.dimension}' không tồn tại. "
@@ -129,9 +131,9 @@ class QueryValidator:
                 )
                 continue
             if isinstance(td.dateRange, str) and td.dateRange not in RELATIVE_DATE_RANGES:
-                errors.append(
-                    f"dateRange '{td.dateRange}' không hợp lệ. "
-                    f"Các giá trị cho phép: {', '.join(RELATIVE_DATE_RANGES)}, hoặc mảng [start, end]."
+                # Warn nhẹ nhưng không reject — Cube Core biết parse thêm nhiều dạng khác
+                notes.append(
+                    f"dateRange '{td.dateRange}' không phải chuỗi chuẩn — Cube Core sẽ cố parse."
                 )
             if td.granularity is not None and td.granularity not in TIME_GRAINS:
                 errors.append(

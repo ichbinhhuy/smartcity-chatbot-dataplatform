@@ -1,0 +1,27 @@
+# Python & Bytecode
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.deepeval/
+
+# Logs & Airflow generated files
+data-transform/logs/
+*.log
+
+# Node dependencies & temp
+**/node_modules/
+**/dist/
+
+# Embedded skills git
+.agents/skills/ui-ux-pro-max-skill/
+
+# Environment files
+.env
+*.env
+
+# dbt compiled target directory
+data-transform/transform/target/
+**/target/
+
+

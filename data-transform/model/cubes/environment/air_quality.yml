@@ -1,0 +1,72 @@
+cubes:
+  - name: air_quality
+    sql: "SELECT * FROM starrocks_gold.fact_environment WHERE is_valid = true"
+
+    joins:
+      - name: districts
+        sql: "{CUBE}.section_id = {districts.id}"
+        relationship: belongsTo
+
+    measures:
+      - name: avg_aqi
+        sql: aqi
+        type: avg
+
+      - name: max_aqi
+        sql: aqi
+        type: max
+
+      - name: avg_pm25
+        sql: pm25
+        type: avg
+
+      - name: avg_noise_db
+        sql: noise_level_db
+        type: avg
+
+      - name: unhealthy_air_hours
+        sql: "CASE WHEN aqi > 100 THEN 1 ELSE 0 END"
+        type: sum
+
+    dimensions:
+      - name: id
+        sql: id
+        type: string
+        primary_key: true
+
+      - name: section_id
+        sql: section_id
+        type: string
+
+      - name: aqi_category
+        sql: |
+          CASE 
+            WHEN aqi <= 50 THEN 'GOOD'
+            WHEN aqi <= 100 THEN 'MODERATE'
+            ELSE 'UNHEALTHY'
+          END
+        type: string
+
+      - name: noise_category
+        sql: |
+          CASE 
+            WHEN noise_level_db < 50 THEN 'QUIET'
+            WHEN noise_level_db <= 70 THEN 'MODERATE'
+            ELSE 'NOISY'
+          END
+        type: string
+
+      - name: recorded_at
+        sql: timestamp
+        type: time
+
+    pre_aggregations:
+      - name: daily_env_by_district
+        measures:
+          - air_quality.avg_aqi
+          - air_quality.avg_pm25
+          - air_quality.avg_noise_db
+        dimensions:
+          - districts.name
+        time_dimension: air_quality.recorded_at
+        granularity: day

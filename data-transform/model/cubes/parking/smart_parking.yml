@@ -1,0 +1,70 @@
+cubes:
+  - name: smart_parking
+    sql: "SELECT * FROM starrocks_gold.fact_parking WHERE is_valid = true"
+
+    joins:
+      - name: districts
+        sql: "{CUBE}.section_id = {districts.id}"
+        relationship: belongsTo
+
+    measures:
+      - name: total_records
+        type: count
+
+      - name: total_slots
+        sql: slot_total
+        type: avg
+
+      - name: avg_occupied_slots
+        sql: occupied_slots
+        type: avg
+
+      - name: max_occupied_slots
+        sql: occupied_slots
+        type: max
+
+      - name: occupancy_pct
+        sql: "occupied_slots * 100.0 / slot_total"
+        type: avg
+
+      - name: available_slots
+        sql: "slot_total - occupied_slots"
+        type: avg
+
+    dimensions:
+      - name: id
+        sql: id
+        type: string
+        primary_key: true
+
+      - name: section_id
+        sql: section_id
+        type: string
+
+      - name: gateway_id
+        sql: gw_id
+        type: string
+
+      - name: occupancy_level
+        sql: |
+          CASE 
+            WHEN (occupied_slots * 100.0 / slot_total) < 50 THEN 'LOW'
+            WHEN (occupied_slots * 100.0 / slot_total) <= 80 THEN 'OPTIMAL'
+            ELSE 'CRITICAL'
+          END
+        type: string
+
+      - name: recorded_at
+        sql: recorded_at
+        type: time
+
+    pre_aggregations:
+      - name: daily_parking_by_district
+        measures:
+          - smart_parking.occupancy_pct
+          - smart_parking.avg_occupied_slots
+          - smart_parking.available_slots
+        dimensions:
+          - districts.name
+        time_dimension: smart_parking.recorded_at
+        granularity: day

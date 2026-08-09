@@ -1,0 +1,2 @@
+incident_id,section_id,incident_type,timestamp_start,duration_min,source_system
+inc_1784810700000,section_2,traffic_light_failure,2026-07-23 19:45:00,15,traffic_police_excel_export

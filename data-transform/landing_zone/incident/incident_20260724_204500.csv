@@ -1,0 +1,2 @@
+incident_id,section_id,incident_type,timestamp_start,duration_min,source_system
+inc_1784900700000,section_3,road_work,2026-07-24 20:45:00,240,traffic_police_excel_export

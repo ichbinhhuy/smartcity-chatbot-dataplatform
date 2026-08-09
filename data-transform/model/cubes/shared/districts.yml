@@ -1,0 +1,21 @@
+cubes:
+  - name: districts
+    sql: "SELECT * FROM starrocks_gold.dim_sections"
+
+    dimensions:
+      - name: id
+        sql: section_id
+        type: string
+        primary_key: true
+
+      - name: name
+        sql: section_name
+        type: string
+
+      - name: max_speed_limit
+        sql: max_speed_limit
+        type: number
+
+      - name: total_parking_slots
+        sql: total_parking_slots
+        type: number

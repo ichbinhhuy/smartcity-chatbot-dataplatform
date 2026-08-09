@@ -1,0 +1,58 @@
+cubes:
+  - name: traffic_flow
+    sql: "SELECT * FROM starrocks_gold.fact_traffic WHERE is_valid = true"
+
+    joins:
+      - name: districts
+        sql: "{CUBE}.section_id = {districts.id}"
+        relationship: belongsTo
+
+    measures:
+      - name: total_records
+        type: count
+
+      - name: avg_vehicle_count
+        sql: vehicle_count
+        type: avg
+
+      - name: sum_vehicle_count
+        sql: vehicle_count
+        type: sum
+
+      - name: max_vehicle_count
+        sql: vehicle_count
+        type: max
+
+      - name: avg_speed
+        sql: avg_speed_kmh
+        type: avg
+
+      - name: overspeed_count
+        sql: "CASE WHEN overspeed_flag = true THEN 1 ELSE 0 END"
+        type: sum
+
+      - name: congestion_rate
+        sql: "CASE WHEN avg_speed_kmh < 15.0 THEN 1.0 ELSE 0.0 END"
+        type: avg
+
+    dimensions:
+      - name: id
+        sql: id
+        type: string
+        primary_key: true
+
+      - name: section_id
+        sql: section_id
+        type: string
+
+      - name: camera_id
+        sql: device_id
+        type: string
+
+      - name: overspeed_flag
+        sql: overspeed_flag
+        type: boolean
+
+      - name: recorded_at
+        sql: recorded_at
+        type: time

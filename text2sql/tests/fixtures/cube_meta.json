@@ -1,65 +1,460 @@
 {
   "cubes": [
     {
-      "name": "energy",
-      "title": "Energy",
+      "name": "city_health_index",
+      "title": "City Health Index",
       "measures": [
-        {"name": "energy.total_consumption", "title": "Tổng lượng điện tiêu thụ", "type": "number", "description": "Tổng lượng điện tiêu thụ (kWh)"},
-        {"name": "energy.avg_consumption", "title": "Lượng điện tiêu thụ trung bình", "type": "number", "description": "Lượng điện tiêu thụ trung bình mỗi bản ghi (kWh)"},
-        {"name": "energy.peak_consumption", "title": "Mức tiêu thụ điện cao nhất", "type": "number", "description": "Mức tiêu thụ điện cao nhất ghi nhận được (kWh)"},
-        {"name": "energy.reading_count", "title": "Số bản ghi tiêu thụ điện", "type": "number", "description": ""}
+        {
+          "name": "city_health_index.avg_livability_index",
+          "title": "avg_livability_index",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "city_health_index.sum_livability_index",
+          "title": "sum_livability_index",
+          "type": "sum",
+          "description": ""
+        },
+        {
+          "name": "city_health_index.avg_traffic_score",
+          "title": "avg_traffic_score",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "city_health_index.avg_env_score",
+          "title": "avg_env_score",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "city_health_index.avg_parking_score",
+          "title": "avg_parking_score",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "city_health_index.avg_lighting_score",
+          "title": "avg_lighting_score",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "city_health_index.avg_safety_score",
+          "title": "avg_safety_score",
+          "type": "avg",
+          "description": ""
+        }
       ],
       "dimensions": [
-        {"name": "energy.district_name", "title": "Tên quận/huyện", "type": "string", "description": "Tên quận/huyện"},
-        {"name": "energy.region", "title": "Khu vực", "type": "string", "description": "Khu vực nội thành/ngoại thành"},
-        {"name": "energy.sector", "title": "Ngành tiêu thụ điện", "type": "string", "description": "Ngành tiêu thụ điện: residential / industrial / commercial / public"},
-        {"name": "energy.recorded_at", "title": "Thời điểm ghi nhận", "type": "time", "description": "Thời điểm ghi nhận chỉ số điện"}
-      ]
-    },
-    {
-      "name": "traffic",
-      "title": "Traffic",
-      "measures": [
-        {"name": "traffic.avg_speed", "title": "Tốc độ lưu thông trung bình", "type": "number", "description": "Tốc độ lưu thông trung bình (km/h)"},
-        {"name": "traffic.total_vehicles", "title": "Tổng số lượt phương tiện", "type": "number", "description": "Tổng số lượt phương tiện đi qua"},
-        {"name": "traffic.congestion_rate", "title": "Tỷ lệ ùn tắc cao", "type": "number", "description": "Tỷ lệ bản ghi có mức ùn tắc cao (0-1)"}
-      ],
-      "dimensions": [
-        {"name": "traffic.district_name", "title": "Tên quận/huyện", "type": "string", "description": "Tên quận/huyện"},
-        {"name": "traffic.region", "title": "Khu vực", "type": "string", "description": "Khu vực nội thành/ngoại thành"},
-        {"name": "traffic.congestion_level", "title": "Mức độ ùn tắc", "type": "string", "description": "Mức độ ùn tắc: low / medium / high"},
-        {"name": "traffic.recorded_at", "title": "Thời điểm ghi nhận", "type": "time", "description": "Thời điểm ghi nhận dữ liệu giao thông"}
+        {
+          "name": "city_health_index.id",
+          "title": "id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "city_health_index.section_id",
+          "title": "section_id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "city_health_index.livability_grade",
+          "title": "livability_grade",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "city_health_index.date",
+          "title": "date",
+          "type": "string",
+          "description": ""
+        }
       ]
     },
     {
       "name": "air_quality",
       "title": "Air Quality",
       "measures": [
-        {"name": "air_quality.avg_aqi", "title": "Chỉ số AQI trung bình", "type": "number", "description": "Chỉ số chất lượng không khí AQI trung bình"},
-        {"name": "air_quality.max_aqi", "title": "Chỉ số AQI cao nhất", "type": "number", "description": "Chỉ số AQI cao nhất ghi nhận được"},
-        {"name": "air_quality.avg_pm25", "title": "Nồng độ PM2.5 trung bình", "type": "number", "description": "Nồng độ bụi mịn PM2.5 trung bình (µg/m3)"},
-        {"name": "air_quality.unhealthy_ratio", "title": "Tỷ lệ AQI vượt ngưỡng an toàn", "type": "number", "description": "Tỷ lệ bản ghi có AQI vượt ngưỡng an toàn (AQI > 100)"}
+        {
+          "name": "air_quality.avg_aqi",
+          "title": "avg_aqi",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "air_quality.max_aqi",
+          "title": "max_aqi",
+          "type": "max",
+          "description": ""
+        },
+        {
+          "name": "air_quality.avg_pm25",
+          "title": "avg_pm25",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "air_quality.avg_noise_db",
+          "title": "avg_noise_db",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "air_quality.unhealthy_air_hours",
+          "title": "unhealthy_air_hours",
+          "type": "sum",
+          "description": ""
+        }
       ],
       "dimensions": [
-        {"name": "air_quality.district_name", "title": "Tên quận/huyện", "type": "string", "description": "Tên quận/huyện"},
-        {"name": "air_quality.region", "title": "Khu vực", "type": "string", "description": "Khu vực nội thành/ngoại thành"},
-        {"name": "air_quality.sensor_type", "title": "Loại thiết bị đo", "type": "string", "description": "Loại thiết bị đo"},
-        {"name": "air_quality.recorded_at", "title": "Thời điểm đo", "type": "time", "description": "Thời điểm đo chất lượng không khí"}
+        {
+          "name": "air_quality.id",
+          "title": "id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "air_quality.section_id",
+          "title": "section_id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "air_quality.aqi_category",
+          "title": "aqi_category",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "air_quality.noise_category",
+          "title": "noise_category",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "air_quality.recorded_at",
+          "title": "recorded_at",
+          "type": "time",
+          "description": ""
+        }
       ]
     },
     {
-      "name": "public_transport",
-      "title": "Public Transport",
+      "name": "street_incidents",
+      "title": "Street Incidents",
       "measures": [
-        {"name": "public_transport.total_passengers", "title": "Tổng số lượt hành khách", "type": "number", "description": ""},
-        {"name": "public_transport.trip_count", "title": "Số chuyến đã chạy", "type": "number", "description": ""},
-        {"name": "public_transport.avg_trip_duration", "title": "Thời gian trung bình mỗi chuyến", "type": "number", "description": "Thời gian trung bình mỗi chuyến (phút)"}
+        {
+          "name": "street_incidents.total_incidents",
+          "title": "total_incidents",
+          "type": "count",
+          "description": ""
+        },
+        {
+          "name": "street_incidents.avg_duration_min",
+          "title": "avg_duration_min",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "street_incidents.total_impact_hours",
+          "title": "total_impact_hours",
+          "type": "sum",
+          "description": ""
+        }
       ],
       "dimensions": [
-        {"name": "public_transport.district_name", "title": "Tên quận/huyện", "type": "string", "description": "Tên quận/huyện"},
-        {"name": "public_transport.route_name", "title": "Tên tuyến", "type": "string", "description": "Tên tuyến"},
-        {"name": "public_transport.transport_mode", "title": "Loại hình vận tải", "type": "string", "description": "Loại hình vận tải: bus / metro / brt"},
-        {"name": "public_transport.departed_at", "title": "Thời điểm khởi hành", "type": "time", "description": "Thời điểm khởi hành chuyến"}
+        {
+          "name": "street_incidents.id",
+          "title": "id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "street_incidents.section_id",
+          "title": "section_id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "street_incidents.incident_type",
+          "title": "incident_type",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "street_incidents.severity",
+          "title": "severity",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "street_incidents.timestamp_start",
+          "title": "timestamp_start",
+          "type": "time",
+          "description": ""
+        }
+      ]
+    },
+    {
+      "name": "smart_lighting",
+      "title": "Smart Lighting",
+      "measures": [
+        {
+          "name": "smart_lighting.total_power_kwh",
+          "title": "total_power_kwh",
+          "type": "sum",
+          "description": ""
+        },
+        {
+          "name": "smart_lighting.avg_power_per_pole",
+          "title": "avg_power_per_pole",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "smart_lighting.sum_power_per_pole",
+          "title": "sum_power_per_pole",
+          "type": "sum",
+          "description": ""
+        },
+        {
+          "name": "smart_lighting.faulty_lamp_count",
+          "title": "faulty_lamp_count",
+          "type": "sum",
+          "description": ""
+        },
+        {
+          "name": "smart_lighting.faulty_lamp_pct",
+          "title": "faulty_lamp_pct",
+          "type": "avg",
+          "description": ""
+        }
+      ],
+      "dimensions": [
+        {
+          "name": "smart_lighting.id",
+          "title": "id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "smart_lighting.section_id",
+          "title": "section_id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "smart_lighting.pole_id",
+          "title": "pole_id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "smart_lighting.lamp_status",
+          "title": "lamp_status",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "smart_lighting.operating_mode",
+          "title": "operating_mode",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "smart_lighting.recorded_at",
+          "title": "recorded_at",
+          "type": "time",
+          "description": ""
+        }
+      ]
+    },
+    {
+      "name": "smart_parking",
+      "title": "Smart Parking",
+      "measures": [
+        {
+          "name": "smart_parking.total_records",
+          "title": "total_records",
+          "type": "count",
+          "description": ""
+        },
+        {
+          "name": "smart_parking.total_slots",
+          "title": "total_slots",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "smart_parking.avg_occupied_slots",
+          "title": "avg_occupied_slots",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "smart_parking.max_occupied_slots",
+          "title": "max_occupied_slots",
+          "type": "max",
+          "description": ""
+        },
+        {
+          "name": "smart_parking.occupancy_pct",
+          "title": "occupancy_pct",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "smart_parking.available_slots",
+          "title": "available_slots",
+          "type": "avg",
+          "description": ""
+        }
+      ],
+      "dimensions": [
+        {
+          "name": "smart_parking.id",
+          "title": "id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "smart_parking.section_id",
+          "title": "section_id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "smart_parking.gateway_id",
+          "title": "gateway_id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "smart_parking.occupancy_level",
+          "title": "occupancy_level",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "smart_parking.recorded_at",
+          "title": "recorded_at",
+          "type": "time",
+          "description": ""
+        }
+      ]
+    },
+    {
+      "name": "districts",
+      "title": "Districts",
+      "measures": [],
+      "dimensions": [
+        {
+          "name": "districts.id",
+          "title": "id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "districts.name",
+          "title": "name",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "districts.max_speed_limit",
+          "title": "max_speed_limit",
+          "type": "number",
+          "description": ""
+        },
+        {
+          "name": "districts.total_parking_slots",
+          "title": "total_parking_slots",
+          "type": "number",
+          "description": ""
+        }
+      ]
+    },
+    {
+      "name": "traffic_flow",
+      "title": "Traffic Flow",
+      "measures": [
+        {
+          "name": "traffic_flow.total_records",
+          "title": "total_records",
+          "type": "count",
+          "description": ""
+        },
+        {
+          "name": "traffic_flow.avg_vehicle_count",
+          "title": "avg_vehicle_count",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "traffic_flow.sum_vehicle_count",
+          "title": "sum_vehicle_count",
+          "type": "sum",
+          "description": ""
+        },
+        {
+          "name": "traffic_flow.max_vehicle_count",
+          "title": "max_vehicle_count",
+          "type": "max",
+          "description": ""
+        },
+        {
+          "name": "traffic_flow.avg_speed",
+          "title": "avg_speed",
+          "type": "avg",
+          "description": ""
+        },
+        {
+          "name": "traffic_flow.overspeed_count",
+          "title": "overspeed_count",
+          "type": "sum",
+          "description": ""
+        },
+        {
+          "name": "traffic_flow.congestion_rate",
+          "title": "congestion_rate",
+          "type": "avg",
+          "description": ""
+        }
+      ],
+      "dimensions": [
+        {
+          "name": "traffic_flow.id",
+          "title": "id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "traffic_flow.section_id",
+          "title": "section_id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "traffic_flow.camera_id",
+          "title": "camera_id",
+          "type": "string",
+          "description": ""
+        },
+        {
+          "name": "traffic_flow.overspeed_flag",
+          "title": "overspeed_flag",
+          "type": "boolean",
+          "description": ""
+        },
+        {
+          "name": "traffic_flow.recorded_at",
+          "title": "recorded_at",
+          "type": "time",
+          "description": ""
+        }
       ]
     }
   ]

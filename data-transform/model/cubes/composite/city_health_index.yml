@@ -1,0 +1,64 @@
+cubes:
+  - name: city_health_index
+    sql: "SELECT * FROM starrocks_gold.gold_street_livability_daily"
+
+
+
+    joins:
+      - name: districts
+        sql: "{CUBE}.section_id = {districts.id}"
+        relationship: belongsTo
+
+    measures:
+      - name: avg_livability_index
+        sql: livability_index
+        type: avg
+
+      - name: sum_livability_index
+        sql: livability_index
+        type: sum
+
+      - name: avg_traffic_score
+        sql: score_traffic
+        type: avg
+
+      - name: avg_env_score
+        sql: score_env
+        type: avg
+
+      - name: avg_parking_score
+        sql: score_parking
+        type: avg
+
+      - name: avg_lighting_score
+        sql: score_lighting
+        type: avg
+
+      - name: avg_safety_score
+        sql: score_safety
+        type: avg
+
+    dimensions:
+      - name: id
+        sql: "CONCAT(section_id, '_', date_key)"
+        type: string
+        primary_key: true
+
+      - name: section_id
+        sql: section_id
+        type: string
+
+      - name: livability_grade
+        sql: |
+          CASE 
+            WHEN livability_index >= 85 THEN 'EXCELLENT'
+            WHEN livability_index >= 70 THEN 'GOOD'
+            ELSE 'POOR'
+          END
+        type: string
+
+      - name: date
+        sql: date_key
+        type: string
+
+

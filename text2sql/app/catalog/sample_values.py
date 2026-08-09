@@ -29,6 +29,27 @@ class SampleValues:
 
     def resolve(self, member: str, value: str) -> tuple[str, bool]:
         """Trả về (giá trị đã quy đổi, có thay đổi hay không)."""
+        val_lower = value.strip().lower()
+        alias_map = {
+            "sec_001": "Khu biet thu",
+            "sec_002": "Can ho",
+            "sec_003": "TTTM",
+            "section_1": "Can ho",
+            "section_2": "Khu biet thu",
+            "section_3": "TTTM",
+            "khu biệt thự": "Khu biet thu",
+            "khu biet thu": "Khu biet thu",
+            "căn hộ": "Can ho",
+            "can ho": "Can ho",
+            "tttm": "TTTM",
+            "trung tâm thương mại": "TTTM",
+            "cổng chính": "TTTM",
+            "cong chinh": "TTTM",
+            "cong chinh - tttm": "TTTM",
+        }
+        if val_lower in alias_map:
+            return alias_map[val_lower], True
+
         allowed = self._values.get(member)
         if not allowed or value in allowed:
             return value, False

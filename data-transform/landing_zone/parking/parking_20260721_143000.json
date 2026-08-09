@@ -1,0 +1,29 @@
+[
+  {
+    "id": "prk_1784619000000_203",
+    "gw": "GW_PARK_SECTION_1",
+    "section_id": "section_1",
+    "recorded_at": "2026-07-21 14:30:00",
+    "tot": 100,
+    "occ": 69,
+    "source_system": "mqtt_lorawan_stream"
+  },
+  {
+    "id": "prk_1784619000000_355",
+    "gw": "GW_PARK_SECTION_2",
+    "section_id": "section_2",
+    "recorded_at": "2026-07-21 14:30:00",
+    "tot": 100,
+    "occ": 79,
+    "source_system": "mqtt_lorawan_stream"
+  },
+  {
+    "id": "prk_1784619000000_463",
+    "gw": "GW_PARK_SECTION_3",
+    "section_id": "section_3",
+    "recorded_at": "2026-07-21 14:30:00",
+    "tot": 100,
+    "occ": 64,
+    "source_system": "mqtt_lorawan_stream"
+  }
+]

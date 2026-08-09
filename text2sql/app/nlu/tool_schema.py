@@ -19,11 +19,16 @@ _FILTER_OPERATORS = [
 ]
 
 
-def build_query_tool(catalog: Catalog) -> dict[str, Any]:
+def build_query_tool(catalog: Catalog, candidates: dict[str, list[str]] | None = None) -> dict[str, Any]:
     """Tool duy nhất: LLM điền form đúng shape Cube thay vì viết SQL."""
-    measure_names = catalog.measure_names()
-    dimension_names = catalog.dimension_names()
     time_dimension_names = catalog.time_dimension_names()
+
+    m_desc = "Các chỉ số cần tính, dạng <cube>.<measure>."
+    d_desc = "Các chiều để nhóm kết quả."
+    if candidates and candidates.get("measures"):
+        m_desc += f" Gợi ý Top-K candidate: {', '.join(candidates['measures'])}"
+    if candidates and candidates.get("dimensions"):
+        d_desc += f" Gợi ý Top-K candidate: {', '.join(candidates['dimensions'])}"
 
     return {
         "name": QUERY_TOOL_NAME,
@@ -38,17 +43,13 @@ def build_query_tool(catalog: Catalog) -> dict[str, Any]:
             "properties": {
                 "measures": {
                     "type": "array",
-                    "description": "Các chỉ số cần tính, dạng <cube>.<measure>.",
-                    "items": {"type": "string", "enum": measure_names},
-                    "minItems": 1,
+                    "description": m_desc,
+                    "items": {"type": "string"},
                 },
                 "dimensions": {
                     "type": "array",
-                    "description": (
-                        "Các chiều để nhóm kết quả (GROUP BY). "
-                        "Bỏ trống nếu người dùng chỉ muốn một con số tổng."
-                    ),
-                    "items": {"type": "string", "enum": dimension_names},
+                    "description": d_desc,
+                    "items": {"type": "string"},
                 },
                 "filters": {
                     "type": "array",
@@ -56,16 +57,15 @@ def build_query_tool(catalog: Catalog) -> dict[str, Any]:
                     "items": {
                         "type": "object",
                         "properties": {
-                            "member": {"type": "string", "enum": dimension_names},
+                            "member": {"type": "string"},
                             "operator": {"type": "string", "enum": _FILTER_OPERATORS},
                             "values": {
                                 "type": "array",
-                                "description": "Giá trị lọc, luôn là mảng (kể cả khi chỉ có một giá trị).",
+                                "description": "Giá trị lọc, luôn là mảng.",
                                 "items": {"type": "string"},
                             },
                         },
                         "required": ["member", "operator", "values"],
-                        "additionalProperties": False,
                     },
                 },
                 "timeDimensions": {
@@ -74,25 +74,22 @@ def build_query_tool(catalog: Catalog) -> dict[str, Any]:
                     "items": {
                         "type": "object",
                         "properties": {
-                            "dimension": {"type": "string", "enum": time_dimension_names},
+                            "dimension": {
+                                "type": "string",
+                                "description": f"Cột thời gian, một trong: {', '.join(time_dimension_names)}",
+                            },
                             "dateRange": {
                                 "description": (
-                                    "Chuỗi tương đối (vd 'last month') hoặc mảng [start, end] ISO date."
+                                    "Khoảng thời gian: dùng chuỗi tương đối như 'today', 'yesterday', "
+                                    "'last 7 days', 'last 30 days', 'this month', 'last month'."
                                 ),
-                                "anyOf": [
-                                    {"type": "string", "enum": RELATIVE_DATE_RANGES},
-                                    {
-                                        "type": "array",
-                                        "items": {"type": "string"},
-                                        "minItems": 2,
-                                        "maxItems": 2,
-                                    },
-                                ],
                             },
-                            "granularity": {"type": "string", "enum": TIME_GRAINS},
+                            "granularity": {
+                                "type": "string",
+                                "description": f"Độ phân giải thời gian. Một trong: {', '.join(TIME_GRAINS)}",
+                            },
                         },
                         "required": ["dimension"],
-                        "additionalProperties": False,
                     },
                 },
                 "order": {
@@ -105,7 +102,6 @@ def build_query_tool(catalog: Catalog) -> dict[str, Any]:
                             "direction": {"type": "string", "enum": ["asc", "desc"]},
                         },
                         "required": ["field", "direction"],
-                        "additionalProperties": False,
                     },
                 },
                 "limit": {
@@ -116,10 +112,9 @@ def build_query_tool(catalog: Catalog) -> dict[str, Any]:
                 },
             },
             "required": ["measures"],
-            "additionalProperties": False,
         },
     }
 
 
-def build_tools(catalog: Catalog) -> list[dict[str, Any]]:
-    return [build_query_tool(catalog)]
+def build_tools(catalog: Catalog, candidates: dict[str, list[str]] | None = None) -> list[dict[str, Any]]:
+    return [build_query_tool(catalog, candidates)]

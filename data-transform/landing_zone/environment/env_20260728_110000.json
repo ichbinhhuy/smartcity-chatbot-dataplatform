@@ -1,0 +1,50 @@
+[
+  {
+    "status": "ok",
+    "section_id": "section_1",
+    "timestamp": "2026-07-28 11:00:00",
+    "data": {
+      "id": "env_1785211200000_292",
+      "aqi": 76,
+      "iaqi": {
+        "pm25": 28.5
+      },
+      "noise": {
+        "level_db": 67.5
+      }
+    },
+    "source_system": "aqicn_api_nested"
+  },
+  {
+    "status": "ok",
+    "section_id": "section_2",
+    "timestamp": "2026-07-28 11:00:00",
+    "data": {
+      "id": "env_1785211200000_672",
+      "aqi": 70,
+      "iaqi": {
+        "pm25": 45.0
+      },
+      "noise": {
+        "level_db": 71.4
+      }
+    },
+    "source_system": "aqicn_api_nested"
+  },
+  {
+    "status": "ok",
+    "section_id": "section_3",
+    "timestamp": "2026-07-28 11:00:00",
+    "data": {
+      "id": "env_1785211200000_142",
+      "aqi": 50,
+      "iaqi": {
+        "pm25": 15.3
+      },
+      "noise": {
+        "level_db": 66.4
+      }
+    },
+    "source_system": "aqicn_api_nested"
+  }
+]

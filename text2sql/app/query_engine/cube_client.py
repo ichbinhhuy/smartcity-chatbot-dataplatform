@@ -61,6 +61,21 @@ class CubeClient:
             raise CubeExecutionError(_extract_error(response)) from exc
         return response.json()
 
+    def _post_load(self, query_payload: dict[str, Any]) -> dict[str, Any]:
+        """Gửi raw dict query tới Cube REST API `/load`."""
+        headers = {"Authorization": self.settings.cube_api_token} if self.settings.cube_api_token else {}
+        try:
+            response = self._client.post(
+                f"{self.settings.cube_api_url}/load",
+                json={"query": query_payload},
+                headers=headers,
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as exc:
+            raise CubeExecutionError(f"Lỗi truy vấn Cube Core: {exc}") from exc
+
+
 
 def _extract_error(response: httpx.Response) -> str:
     try:

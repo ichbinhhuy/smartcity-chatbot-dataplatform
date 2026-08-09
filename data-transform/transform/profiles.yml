@@ -1,0 +1,10 @@
+smartcity:
+  target: dev
+  outputs:
+    dev:
+      type: starrocks
+      host: "{{ env_var('DBT_STARROCKS_HOST', 'starrocks') }}"
+      port: 9030
+      schema: starrocks_silver   # target database
+      username: root
+      password: ""

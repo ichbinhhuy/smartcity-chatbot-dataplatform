@@ -1,0 +1,26 @@
+name: 'smartcity_transform'
+version: '1.0.0'
+config-version: 2
+
+profile: 'smartcity'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  smartcity_transform:
+    silver:
+      +schema: starrocks_silver
+      +materialized: table
+    gold:
+      +schema: starrocks_gold
+      +materialized: table

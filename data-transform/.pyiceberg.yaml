@@ -1,0 +1,9 @@
+catalog:
+  bronze_catalog:
+    type: rest
+    uri: http://127.0.0.1:19120/iceberg
+    warehouse: bronze
+    s3.endpoint: http://127.0.0.1:9000
+    s3.access-key-id: minioadmin
+    s3.secret-access-key: minioadmin
+    s3.path-style-access: "true"

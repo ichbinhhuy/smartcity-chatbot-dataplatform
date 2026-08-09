@@ -23,6 +23,7 @@ from app.nlu.prompt import build_runtime_context, build_system_prompt
 from app.nlu.tool_schema import build_tools
 from app.nlu.types import NLUResult, NLUStatus
 from app.nlu.validator import QueryValidator
+from app.retrieval.retriever import CatalogRetriever
 
 
 class NLUOrchestrator:
@@ -37,10 +38,7 @@ class NLUOrchestrator:
         self.settings = settings or default_settings
         self.llm = llm_client
         self.validator = QueryValidator(catalog, sample_values, self.settings)
-
-        # Sinh một lần lúc khởi tạo: prompt và tool schema là hàm thuần của catalog.
-        self.system_prompt = build_system_prompt(catalog)
-        self.tools = build_tools(catalog)
+        self.retriever = CatalogRetriever(catalog)
 
     def interpret(
         self,
@@ -51,6 +49,13 @@ class NLUOrchestrator:
         messages = list(history or [])
         messages.extend(self._build_user_turn(question, today))
 
+        # 1. Retrieval Layer: Semantic Search Top-K candidates (K=5)
+        candidates = self.retriever.retrieve(question, top_k=5)
+
+        # 2. Dynamic Tool Schema & System Prompt based on Top-K candidates
+        system_prompt = build_system_prompt(self.catalog, candidates)
+        tools = build_tools(self.catalog, candidates)
+
         usage_total: dict[str, int] = {}
         attempts = self.settings.max_repair_attempts + 1
         last_errors: list[str] = []
@@ -58,7 +63,7 @@ class NLUOrchestrator:
 
         for attempt in range(attempts):
             try:
-                response = self.llm.interpret_query(self.system_prompt, messages, self.tools)
+                response = self.llm.interpret_query(system_prompt, messages, tools)
             except LLMError as exc:
                 return NLUResult(
                     status=NLUStatus.ERROR,
@@ -110,24 +115,32 @@ class NLUOrchestrator:
 
             # Đưa lỗi validation ngược lại cho model dưới dạng tool_result lỗi
             # để nó tự sửa tham số. Echo lại assistant content nguyên bản trước,
-            # đúng yêu cầu của hầu hết provider (Claude yêu cầu điều này, ví dụ).
-            messages.append({"role": "assistant", "content": parsed.raw_assistant_content})
+            # đúng yêu cầu của hầu hết provider (Groq/OpenAI yêu cầu điều này).
+            #
+            # Groq (OpenAI-compat) format:
+            #   assistant: {role, content (str|null→""), tool_calls: [...]}
+            #   tool:      {role:"tool", tool_call_id, content (str)}
+            raw = parsed.raw_assistant_content
+            if isinstance(raw, dict):
+                # raw là message dict từ Groq response — đã đúng format OpenAI
+                # Nhưng Groq reject content=null, normalize thành ""
+                assistant_msg = dict(raw)
+                if assistant_msg.get("content") is None:
+                    assistant_msg["content"] = ""
+                messages.append(assistant_msg)
+            else:
+                messages.append({"role": "assistant", "content": raw or ""})
+
             messages.append(
                 {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": parsed.tool_call_id,
-                            "is_error": True,
-                            "content": (
-                                "Tham số không hợp lệ:\n- "
-                                + "\n- ".join(result.errors)
-                                + "\nHãy gọi lại tool với tham số đã sửa, "
-                                "hoặc hỏi lại người dùng nếu vẫn chưa rõ."
-                            ),
-                        }
-                    ],
+                    "role": "tool",
+                    "tool_call_id": parsed.tool_call_id or "call_1",
+                    "content": (
+                        "Tham số không hợp lệ:\n- "
+                        + "\n- ".join(result.errors)
+                        + "\nHãy gọi lại tool với tham số đã sửa, "
+                        "hoặc hỏi lại người dùng nếu vẫn chưa rõ."
+                    ),
                 }
             )
 

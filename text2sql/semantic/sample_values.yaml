@@ -1,23 +1,50 @@
 # Mapping giá trị hiển thị <-> giá trị thật trong DB cho các dimension dạng enum.
-#
-# Cube Meta API chỉ trả về TÊN field, không trả về giá trị thật đang có trong
-# data warehouse — đây là phần bù cho thứ Cube không cung cấp, xem
-# docs/02-cube-architecture.md mục 3 ("Vai trò riêng của sample_values.yaml").
-#
-# Key: đúng theo Cube member format "cube.dimension". Value: danh sách giá trị
-# thật trong DB, dùng để fuzzy-match giá trị LLM tự viết ra (vd "Quận 1" -> ...).
-#
-# Dimension có giá trị lấy trực tiếp từ DB (vd district_name — hàng trăm quận,
-# không liệt kê hết được) thì không khai báo ở đây; validator bỏ qua fuzzy-match
-# cho những field không có mặt trong file này.
+# Chỉ chứa các Cube thực tế từ hệ thống Smart City (data-transform).
 
-energy.region: [noi_thanh, ngoai_thanh]
-energy.sector: [residential, industrial, commercial, public]
+districts.name:
+  - "Quận 1"
+  - "Quận 3"
+  - "Quận Bình Thạnh"
+  - "Quận Tân Bình"
+  - "Thành phố Thủ Đức"
 
-traffic.region: [noi_thanh, ngoai_thanh]
-traffic.congestion_level: [low, medium, high]
+air_quality.aqi_category:
+  - "GOOD"
+  - "MODERATE"
+  - "UNHEALTHY"
 
-air_quality.region: [noi_thanh, ngoai_thanh]
-air_quality.sensor_type: [air_quality]
+air_quality.noise_category:
+  - "QUIET"
+  - "MODERATE"
+  - "NOISY"
 
-public_transport.transport_mode: [bus, metro, brt]
+smart_lighting.lamp_status:
+  - "NORMAL"
+  - "FAULTY"
+  - "DIMMED"
+
+smart_lighting.operating_mode:
+  - "EVENING_FULL"
+  - "NIGHT_DIMMING"
+  - "DAY_OFF"
+
+smart_parking.occupancy_level:
+  - "LOW"
+  - "OPTIMAL"
+  - "CRITICAL"
+
+street_incidents.incident_type:
+  - "ACCIDENT"
+  - "ROAD_WORK"
+  - "FLOODING"
+  - "CONGESTION"
+
+street_incidents.severity:
+  - "MINOR"
+  - "MAJOR"
+  - "CRITICAL"
+
+city_health_index.livability_grade:
+  - "EXCELLENT"
+  - "GOOD"
+  - "POOR"

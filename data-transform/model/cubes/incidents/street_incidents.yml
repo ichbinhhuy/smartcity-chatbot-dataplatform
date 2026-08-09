@@ -1,0 +1,49 @@
+cubes:
+  - name: street_incidents
+    sql: "SELECT * FROM starrocks_gold.fact_incident"
+
+
+
+    joins:
+      - name: districts
+        sql: "{CUBE}.section_id = {districts.id}"
+        relationship: belongsTo
+
+    measures:
+      - name: total_incidents
+        type: count
+
+      - name: avg_duration_min
+        sql: duration_min
+        type: avg
+
+      - name: total_impact_hours
+        sql: "duration_min / 60.0"
+        type: sum
+
+    dimensions:
+      - name: id
+        sql: incident_id
+        type: string
+        primary_key: true
+
+      - name: section_id
+        sql: section_id
+        type: string
+
+      - name: incident_type
+        sql: incident_type
+        type: string
+
+      - name: severity
+        sql: |
+          CASE 
+            WHEN duration_min < 30 THEN 'MINOR'
+            WHEN duration_min <= 90 THEN 'MAJOR'
+            ELSE 'CRITICAL'
+          END
+        type: string
+
+      - name: timestamp_start
+        sql: timestamp_start
+        type: time
