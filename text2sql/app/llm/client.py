@@ -1,9 +1,10 @@
-"""Interface chung cho LLM — provider cụ thể (Claude, v.v.) là quyết định sau.
+"""Interface chung cho LLM — phần còn lại của hệ thống (orchestrator, server) chỉ
+biết tới `LLMClient`, không quan tâm provider cụ thể là gì.
 
-Kiến trúc chỉ định nghĩa hợp đồng ở đây, KHÔNG có implementation cụ thể — xem
-docs/02-cube-architecture.md ("LLM cụ thể chưa chốt"). Muốn chạy thật, viết một
-class thoả `LLMClient` (ví dụ `app.llm.claude.ClaudeClient`) và inject vào
-`NLUOrchestrator`.
+Implementation có sẵn (tất cả ở `app/llm/`): `GroqLLMClient`, `OpenAILLMClient`,
+`GeminiLLMClient`, `OpenRouterLLMClient` — provider được chọn qua biến môi trường
+`LLM_PROVIDER` trong `.env`, xem `app/llm/factory.py`. Muốn thêm provider mới, viết
+thêm một class thoả `LLMClient` và đăng ký vào `factory.py`.
 """
 
 from __future__ import annotations

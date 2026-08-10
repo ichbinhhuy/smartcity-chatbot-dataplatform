@@ -203,7 +203,7 @@ services:
   # ------------------------------------------------------------
   web:
     build:
-      context: ../text2sql_SmartCity-main
+      context: ../text2sql
       dockerfile: Dockerfile
     container_name: smartcity_web
     ports:
@@ -211,16 +211,22 @@ services:
     environment:
       - CUBE_API_URL=http://cube:4000/cubejs-api/v1
       - CUBE_API_TOKEN=devsecret
+      # Đổi provider LLM bằng cách sửa biến này (hoặc export trước khi `docker
+      # compose up`) — không cần sửa code. groq | openai | google | openrouter.
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - GROQ_API_KEY=${GROQ_API_KEY:-your_groq_api_key_here}
       - NLU_MODEL=llama-3.3-70b-versatile
       - NLG_MODEL=llama-3.1-8b-instant
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - SUPERSET_EMBED_URL=http://localhost:8088/superset/dashboard/1/?standalone=true
 
 
     volumes:
-      - ../text2sql_SmartCity-main/app:/app/app
-      - ../text2sql_SmartCity-main/semantic:/app/semantic
-      - ../text2sql_SmartCity-main/web:/app/web
+      - ../text2sql/app:/app/app
+      - ../text2sql/semantic:/app/semantic
+      - ../text2sql/web:/app/web
     depends_on:
       - cube
     restart: unless-stopped

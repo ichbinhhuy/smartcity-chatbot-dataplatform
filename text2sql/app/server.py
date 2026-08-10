@@ -18,7 +18,7 @@ from app.catalog.cube_meta import fetch_catalog, parse_catalog
 from app.catalog.models import Catalog
 from app.catalog.sample_values import SampleValues
 from app.config import settings
-from app.llm.groq import GroqLLMClient
+from app.llm.factory import get_llm_client
 from app.nlu.orchestrator import NLUOrchestrator
 from app.nlu.types import NLUStatus
 from app.query_engine.cube_client import CubeClient, CubeQueryError
@@ -422,7 +422,7 @@ def api_lineage_graph():
 
 @app.post("/api/chat")
 def api_chat(req: ChatRequest):
-    """Xử lý câu hỏi tự nhiên qua Groq LLM + Cube Core."""
+    """Xử lý câu hỏi tự nhiên qua LLM (provider chọn qua LLM_PROVIDER) + Cube Core."""
     if not req.question or not req.question.strip():
         raise HTTPException(status_code=400, detail="Câu hỏi không được để trống")
 
@@ -430,9 +430,12 @@ def api_chat(req: ChatRequest):
     sample_values = SampleValues.load(settings.sample_values_path)
 
     try:
-        llm = GroqLLMClient()
+        llm = get_llm_client()
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Lỗi khởi tạo Groq LLM Client: {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Lỗi khởi tạo LLM Client (provider={settings.llm_provider}): {exc}",
+        )
 
     orchestrator = NLUOrchestrator(
         catalog=catalog,
