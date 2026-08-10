@@ -49,11 +49,23 @@ class Settings:
         default_factory=lambda: os.getenv("SUPERSET_EMBED_URL", "http://localhost:8088")
     )
 
-    # Groq API key
-    groq_api_key: str | None = field(default_factory=lambda: os.getenv("GROQ_API_KEY"))
+    # Chọn LLM provider — đổi giá trị này trong .env để đổi provider, không cần
+    # sửa code. Giá trị hỗ trợ: openai (mặc định) | groq | google | openrouter.
+    # Xem app/llm/factory.py.
+    llm_provider: str = field(default_factory=lambda: os.getenv("LLM_PROVIDER", "openai"))
 
-    # Tên model — ý nghĩa cụ thể (effort, max_tokens...) tuỳ provider LLM được
-    # chọn sau, xem app/llm/client.py. Để trống nếu provider tự có default riêng.
+    # API key cho từng provider — chỉ cần điền key của provider đang chọn ở
+    # LLM_PROVIDER, các key còn lại có thể để trống.
+    groq_api_key: str | None = field(default_factory=lambda: os.getenv("GROQ_API_KEY"))
+    openai_api_key: str | None = field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
+    google_api_key: str | None = field(
+        default_factory=lambda: os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    )
+    openrouter_api_key: str | None = field(default_factory=lambda: os.getenv("OPENROUTER_API_KEY"))
+
+    # Tên model — mặc định riêng theo từng provider (xem app/llm/<provider>.py).
+    # NLU_MODEL/NLG_MODEL "chung" này chỉ áp dụng khi LLM_PROVIDER=groq (tương
+    # thích ngược); các provider khác dùng <PROVIDER>_NLU_MODEL/<PROVIDER>_NLG_MODEL.
     nlu_model: str | None = field(default_factory=lambda: os.getenv("NLU_MODEL"))
     nlg_model: str | None = field(default_factory=lambda: os.getenv("NLG_MODEL"))
 

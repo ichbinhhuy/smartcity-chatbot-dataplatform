@@ -1,4 +1,4 @@
-"""CLI demo cho module Text2SQL NLU + Cube Core (sử dụng Groq LLM).
+"""CLI demo cho module Text2SQL NLU + Cube Core (đa LLM provider — xem app/llm/factory.py).
 
 Usage:
     python -m app.main --inspect                             # Gọi Cube Meta API thật, in prompt + tool schema
@@ -17,7 +17,7 @@ from app.catalog.cube_meta import fetch_catalog, parse_catalog
 from app.catalog.models import Catalog
 from app.catalog.sample_values import SampleValues
 from app.config import settings
-from app.llm.groq import GroqLLMClient
+from app.llm.factory import get_llm_client
 from app.nlu.orchestrator import NLUOrchestrator
 from app.nlu.prompt import build_system_prompt
 from app.nlu.tool_schema import build_tools
@@ -36,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
 
-    parser = argparse.ArgumentParser(description="Text-to-SQL SmartCity Agent (Groq + Cube Core backend)")
+    parser = argparse.ArgumentParser(description="Text-to-SQL SmartCity Agent (đa LLM provider + Cube Core backend)")
     parser.add_argument("question", nargs="?", help="Câu hỏi bằng ngôn ngữ tự nhiên")
     parser.add_argument(
         "--inspect",
@@ -66,11 +66,11 @@ def main(argv: list[str] | None = None) -> int:
     if not args.question:
         parser.error("Cần truyền câu hỏi, hoặc dùng --inspect")
 
-    # Load Groq LLM Client & Orchestrator
+    # Load LLM Client (provider chọn qua LLM_PROVIDER trong .env) & Orchestrator
     try:
-        llm = GroqLLMClient()
+        llm = get_llm_client()
     except Exception as exc:
-        print(f"Lỗi khởi tạo Groq LLM Client: {exc}")
+        print(f"Lỗi khởi tạo LLM Client (provider={settings.llm_provider}): {exc}")
         return 1
 
     sample_values = SampleValues.load(settings.sample_values_path)
@@ -82,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     print(f"\n❓ Câu hỏi: {args.question}\n")
-    print("⏳ Đang xử lý NLU (Groq LLM)...")
+    print(f"⏳ Đang xử lý NLU (provider={settings.llm_provider})...")
 
     nlu_result = orchestrator.interpret(args.question)
 
