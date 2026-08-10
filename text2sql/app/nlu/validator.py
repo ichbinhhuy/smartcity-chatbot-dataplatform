@@ -57,7 +57,7 @@ class QueryValidator:
             return ValidationResult(ok=False, errors=[f"Tham số tool không đúng cấu trúc: {exc}"])
 
         self._validate_measures(query, errors)
-        self._validate_dimensions(query, errors)
+        self._validate_dimensions(query, errors, notes)
         self._validate_filters(query, errors, notes)
         self._validate_time_dimensions(query, errors, notes)
         self._validate_order(query, errors)
@@ -75,15 +75,34 @@ class QueryValidator:
             if self.catalog.get_measure(m) is None:
                 errors.append(f"Measure '{m}' không tồn tại. {self._suggest(m, names)}")
 
-    def _validate_dimensions(self, query: CubeQuery, errors: list[str]) -> None:
-        names = self.catalog.dimension_names()
+    def _validate_dimensions(self, query: CubeQuery, errors: list[str], notes: list[str]) -> None:
+        names = set(self.catalog.dimension_names())
+        target_cube = query.measures[0].split(".")[0] if query.measures else None
+
+        valid_dims = []
         for d in query.dimensions:
-            if d not in names:
-                errors.append(f"Dimension '{d}' không tồn tại. {self._suggest(d, names)}")
+            if target_cube and not d.startswith(target_cube + "."):
+                suffix = d.split(".")[-1]
+                corrected = f"{target_cube}.{suffix}"
+                if corrected in names:
+                    notes.append(f"Đã chuyển dimension '{d}' sang '{corrected}' cho khớp với Cube '{target_cube}'.")
+                    valid_dims.append(corrected)
+                else:
+                    notes.append(f"Đã bỏ dimension '{d}' thuộc Cube khác cho khớp với Cube '{target_cube}'.")
+            elif d not in names:
+                errors.append(f"Dimension '{d}' không tồn tại. {self._suggest(d, sorted(names))}")
+            else:
+                valid_dims.append(d)
+        query.dimensions = valid_dims
 
     def _validate_filters(self, query: CubeQuery, errors: list[str], notes: list[str]) -> None:
         dim_names = set(self.catalog.dimension_names())
+        measure_names = set(self.catalog.measure_names())
+        all_member_names = dim_names | measure_names
         time_dim_names = set(self.catalog.time_dimension_names())
+        target_cube = query.measures[0].split(".")[0] if query.measures else None
+
+        valid_filters = []
         for f in query.filters:
             if f.member in time_dim_names:
                 errors.append(
@@ -91,13 +110,33 @@ class QueryValidator:
                     "thay vì đưa vào `filters`."
                 )
                 continue
-            if f.member not in dim_names:
+
+            # Auto-align filter member to target_cube if LLM picked a field from another candidate cube
+            if target_cube and not f.member.startswith(target_cube + "."):
+                suffix = f.member.split(".")[-1]
+                corrected = f"{target_cube}.{suffix}"
+                if corrected in all_member_names:
+                    notes.append(f"Đã chuyển filter '{f.member}' sang '{corrected}' cho khớp với Cube '{target_cube}'.")
+                    f.member = corrected
+
+            # Auto-correct: Nếu filter gọi phép toán số (lt, gt, lte, gte) với con số trên cột Enum -> chuyển sang cột Measure số
+            if f.operator in ("lt", "lte", "gt", "gte") and f.values and (f.values[0].replace(".", "", 1).isdigit()):
+                prefix = f.member.split(".")[0]
+                for m in query.measures:
+                    if m.startswith(prefix):
+                        notes.append(f"Đã tự động chuyển filter từ '{f.member}' sang measure số '{m}' cho phép toán '{f.operator}'.")
+                        f.member = m
+                        break
+
+            if f.member not in all_member_names:
                 errors.append(
-                    f"Dimension '{f.member}' không tồn tại. "
-                    f"{self._suggest(f.member, sorted(dim_names))}"
+                    f"Filter member '{f.member}' không tồn tại. "
+                    f"{self._suggest(f.member, sorted(all_member_names))}"
                 )
                 continue
+            valid_filters.append(f)
             self._resolve_filter_values(f, notes)
+        query.filters = valid_filters
 
     def _resolve_filter_values(self, f: Any, notes: list[str]) -> None:
         """Đối chiếu giá trị filter với Alias Map hoặc sample_values.yaml."""
