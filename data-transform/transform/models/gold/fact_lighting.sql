@@ -9,7 +9,12 @@
 
 SELECT
     id,
-    section_id,
+    CASE section_id
+        WHEN 'section_2' THEN 'Khu biet thu'
+        WHEN 'section_1' THEN 'Can ho'
+        WHEN 'section_3' THEN 'TTTM'
+        ELSE section_id
+    END AS section_id,
     pole_id,
     recorded_at,
     power_kwh,

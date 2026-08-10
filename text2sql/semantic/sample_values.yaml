@@ -1,12 +1,32 @@
-# Mapping giá trị hiển thị <-> giá trị thật trong DB cho các dimension dạng enum.
-# Chỉ chứa các Cube thực tế từ hệ thống Smart City (data-transform).
+traffic_flow.section_id:
+  - "Khu biet thu"
+  - "Can ho"
+  - "TTTM"
 
-districts.name:
-  - "Quận 1"
-  - "Quận 3"
-  - "Quận Bình Thạnh"
-  - "Quận Tân Bình"
-  - "Thành phố Thủ Đức"
+smart_lighting.section_id:
+  - "Khu biet thu"
+  - "Can ho"
+  - "TTTM"
+
+smart_parking.section_id:
+  - "Khu biet thu"
+  - "Can ho"
+  - "TTTM"
+
+air_quality.section_id:
+  - "Khu biet thu"
+  - "Can ho"
+  - "TTTM"
+
+street_incidents.section_id:
+  - "Khu biet thu"
+  - "Can ho"
+  - "TTTM"
+
+city_health_index.section_id:
+  - "Khu biet thu"
+  - "Can ho"
+  - "TTTM"
 
 air_quality.aqi_category:
   - "GOOD"

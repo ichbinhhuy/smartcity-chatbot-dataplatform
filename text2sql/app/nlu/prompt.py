@@ -9,9 +9,9 @@ Phần biến động theo request (ngày giờ hiện tại) tách riêng ở
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 
-from app.catalog.models import Catalog
+VN_TZ = timezone(timedelta(hours=7))
 
 _RULES = """\
 # Role
@@ -23,6 +23,7 @@ Smart City NLU Assistant. Convert natural language questions into precise `query
 3. Time filtering MUST use `timeDimensions` (e.g., `air_quality.recorded_at`, `traffic_flow.recorded_at`, `city_health_index.date`, `smart_parking.recorded_at`, `smart_lighting.recorded_at`, `street_incidents.timestamp_start`).
 4. If no time range is specified, leave `timeDimensions` empty (system applies default).
 5. Preserve filter value names as written by user; system auto-maps section aliases (`Khu biet thu`, `Can ho`, `TTTM`).
+6. If a date or month is mentioned without a year (e.g., '27.7', 'ngày 25 tháng 7'), ALWAYS default the year to current year (2026).
 """
 
 
@@ -60,10 +61,11 @@ def build_runtime_context(
     default_time_range_label: str = "30 ngày gần nhất",
 ) -> str:
     """Phần biến động theo từng request — luôn đặt SAU câu hỏi để không phá cache."""
-    today = today or date.today()
+    today = today or datetime.now(VN_TZ).date()
     return (
         f"<runtime_context>\n"
-        f"Hôm nay là {today.isoformat()}.\n"
+        f"Hôm nay là {today.isoformat()} (Năm {today.year}).\n"
+        f"Nếu người dùng nêu ngày/tháng mà không ghi năm (ví dụ: '27.7', 'ngày 25/7'), BẮT BUỘC lấy năm mặc định là {today.year}.\n"
         f"Nếu câu hỏi không nêu mốc thời gian, hệ thống sẽ mặc định lấy {default_time_range_label}.\n"
         f"</runtime_context>"
     )

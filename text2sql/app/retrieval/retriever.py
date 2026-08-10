@@ -1,9 +1,9 @@
-"""Catalog Retrieval Layer: Qdrant Hybrid Search (RRF Score Fusion & Rich Metadata Documents).
+"""Catalog Retrieval Layer: Semantic Multilingual Embedding Search & RRF Score Fusion.
 
-Cải tiến dựa trên phản biện kiến trúc:
-1. RRF (Reciprocal Rank Fusion): Độc lập với scale điểm số của Dense & Sparse search.
-2. Rich Metadata Document: Nhúng phong phú thông tin Field, Description, Aliases, Domain & Cube Name.
-3. Similarity Gap Check: Tự động mở rộng Candidate Pool nếu điểm top-1 và top-2 quá sát nhau (< 0.05).
+Cải tiến với AI Real Embeddings:
+1. SentenceTransformer Multilingual Embedding Model (`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`).
+2. Reciprocal Rank Fusion (RRF): Kết hợp Dense Semantic Cosine Similarity và BM25 Lexical Overlap.
+3. Co-occurrence Cube Expansion: Nạp toàn bộ Measures & Dimensions cho Cube được chọn.
 """
 
 from __future__ import annotations
@@ -15,12 +15,74 @@ import re
 from typing import Any
 
 import httpx
+import numpy as np
 
 from app.catalog.models import Catalog
 
+MULTILINGUAL_MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
+
+class AIEmbeddingEngine:
+    """Mô hình AI Embedding đa ngôn ngữ hỗ trợ SentenceTransformer, FastEmbed và Hash Fallback."""
+
+    def __init__(self, model_name: str = MULTILINGUAL_MODEL_NAME) -> None:
+        self.backend = "sentence_transformers"
+        try:
+            from sentence_transformers import SentenceTransformer
+            print(f"[RAG Engine] Nạp SentenceTransformer ({model_name})...")
+            self.model = SentenceTransformer(model_name)
+        except Exception:
+            try:
+                from fastembed import TextEmbedding
+                print(f"[RAG Engine] Nạp FastEmbed ({model_name})...")
+                self.backend = "fastembed"
+                self.model = TextEmbedding(model_name=model_name)
+            except Exception:
+                print("[RAG Engine Notice] Dùng Hash Vector Fallback...")
+                self.backend = "hash"
+                self.model = None
+
+    def _hash_vector(self, text: str) -> np.ndarray:
+        tokens = re.sub(r"[^\w\s]", " ", text.lower()).split()
+        v = np.zeros(64, dtype=np.float32)
+        for token in tokens:
+            idx = abs(hash(token)) % 64
+            v[idx] += 1.0
+        norm = np.linalg.norm(v) or 1.0
+        return v / norm
+
+    def encode_single(self, text: str) -> np.ndarray:
+        if self.backend == "sentence_transformers":
+            vec = self.model.encode(text, normalize_embeddings=True)
+            return np.array(vec, dtype=np.float32)
+        elif self.backend == "fastembed":
+            vecs = list(self.model.embed([text]))
+            v = np.array(vecs[0], dtype=np.float32)
+            norm = np.linalg.norm(v) or 1.0
+            return v / norm
+        else:
+            return self._hash_vector(text)
+
+    def encode_batch(self, texts: list[str]) -> list[np.ndarray]:
+        if not texts:
+            return []
+        if self.backend == "sentence_transformers":
+            vecs = self.model.encode(texts, normalize_embeddings=True)
+            return [np.array(v, dtype=np.float32) for v in vecs]
+        elif self.backend == "fastembed":
+            vecs = list(self.model.embed(texts))
+            res = []
+            for v in vecs:
+                v_arr = np.array(v, dtype=np.float32)
+                norm = np.linalg.norm(v_arr) or 1.0
+                res.append(v_arr / norm)
+            return res
+        else:
+            return [self._hash_vector(t) for t in texts]
+
 
 class CatalogRetriever:
-    """Qdrant Hybrid Search sử dụng RRF (Reciprocal Rank Fusion) & Rich Metadata."""
+    """Hybrid Search với Multilingual AI Embeddings, BM25 và RRF Score Fusion."""
 
     def __init__(self, catalog: Catalog, qdrant_host: str | None = None) -> None:
         self.catalog = catalog
@@ -28,7 +90,8 @@ class CatalogRetriever:
         self.qdrant_url = f"http://{self.qdrant_host}:6333"
         self.collection_name = "cube_catalog"
         self.documents: list[dict[str, Any]] = []
-        
+
+        self.embedding_engine = AIEmbeddingEngine(MULTILINGUAL_MODEL_NAME)
         self._build_rich_documents()
         self._setup_qdrant()
 
@@ -37,7 +100,7 @@ class CatalogRetriever:
         return {w for w in text_clean.split() if len(w) > 1}
 
     def _build_rich_documents(self) -> None:
-        """Đóng gói Rich Metadata Document chứa Aliases, Domain, Business Meaning."""
+        """Đóng gói Rich Metadata Document và tính toán AI Embedding Vector."""
         self.documents.clear()
 
         domain_alias_map = {
@@ -45,6 +108,7 @@ class CatalogRetriever:
             "air_quality": "chất lượng không khí aqi bụi mịn pm25 tiếng ồn ô nhiễm môi trường quiet noisy",
             "traffic_flow": "giao thông tốc độ vận tốc số lượng xe ô tô xe máy kẹt xe ùn tắc di chuyển speed vehicle",
             "smart_parking": "bãi đỗ xe chỗ gửi xe đỗ xe occupancy slots vị trí trống ô tô",
+            "smart_lighting.operating_mode": "buổi tối ban đêm ban ngày tiết kiệm điện day off night dimming",
             "smart_lighting": "đèn đường chiếu sáng công suất tiêu thụ điện hỏng pole faulty lighting power",
             "street_incidents": "sự cố giao thông tai nạn ngập lụt công trình accident flood congestion",
             "districts": "quận huyện địa bàn phân khu vị trí địa lý khu vực",
@@ -57,12 +121,16 @@ class CatalogRetriever:
             "air_quality.avg_pm25": "bụi mịn pm25 chất lượng không khí ô nhiễm",
             "air_quality.avg_noise_db": "độ ồn tiếng ồn dBA âm thanh noisy quiet",
             "traffic_flow.avg_speed": "tốc độ vận tốc giao thông tốc độ trung bình di chuyển km h speed",
-            "traffic_flow.avg_vehicle_count": "số lượng xe lưu lượng phương tiện ô tô xe máy traffic count",
+            "traffic_flow.avg_vehicle_count": "trung bình số lượng xe lưu lượng phương tiện ô tô xe máy traffic count",
+            "traffic_flow.sum_vehicle_count": "tổng số lượng xe đông nhất lưu thông phương tiện xe cộ total vehicle count",
+            "traffic_flow.max_vehicle_count": "số lượng xe nhiều nhất đông nhất đỉnh điểm max vehicle count",
             "traffic_flow.congestion_rate": "tỷ lệ kẹt xe ùn tắc giao thông tắc đường congestion",
             "smart_parking.occupancy_pct": "tỷ lệ đỗ xe bãi đỗ xe chỗ gửi xe ô tô trống rỗng occupancy",
             "smart_parking.available_slots": "số chỗ đỗ xe còn trống bãi đỗ xe available slots",
             "smart_lighting.faulty_lamp_count": "số bóng đèn đường bị hỏng hóc sự cố chiếu sáng faulty lamp",
             "smart_lighting.total_power_kwh": "tổng điện năng tiêu thụ chiếu sáng kwh power energy",
+            "smart_lighting.sum_power_per_pole": "tổng điện năng tiêu thụ cột đèn kwh power",
+            "smart_lighting.avg_power_per_pole": "trung bình điện năng tiêu thụ cột đèn kwh power",
             "street_incidents.total_incidents": "tổng số sự cố tai nạn ngập lụt công trình tắc đường incident",
         }
 
@@ -92,27 +160,27 @@ class CatalogRetriever:
                     "text": doc_text.lower(),
                 })
 
+        # Calculate Real Embeddings for all catalog metadata documents once at startup
+        texts = [doc["text"] for doc in self.documents]
+        embeddings = self.embedding_engine.encode_batch(texts)
+        for doc, emb in zip(self.documents, embeddings):
+            doc["embedding"] = emb
+
     def _setup_qdrant(self) -> None:
         """Khởi tạo Collection & Index Rich Metadata vào Qdrant."""
         try:
+            vector_size = len(self.documents[0]["embedding"]) if self.documents else 384
             httpx.put(
                 f"{self.qdrant_url}/collections/{self.collection_name}",
-                json={"vectors": {"size": 64, "distance": "Cosine"}},
+                json={"vectors": {"size": vector_size, "distance": "Cosine"}},
                 timeout=5.0
             )
 
             points = []
             for doc in self.documents:
-                vector = [0.0] * 64
-                for token in doc["tokens"]:
-                    idx = abs(hash(token)) % 64
-                    vector[idx] += 1.0
-                norm = math.sqrt(sum(v * v for v in vector)) or 1.0
-                vector = [v / norm for v in vector]
-
                 points.append({
                     "id": doc["id"],
-                    "vector": vector,
+                    "vector": doc["embedding"].tolist(),
                     "payload": {
                         "cube_name": doc["cube_name"],
                         "field_name": doc["field_name"],
@@ -130,11 +198,10 @@ class CatalogRetriever:
             print(f"[Qdrant Notice] {exc}")
 
     def retrieve(self, question: str, top_k: int = 5) -> dict[str, list[str]]:
-        """Hybrid Search với RRF (Reciprocal Rank Fusion) & Similarity Gap Check."""
+        """Hybrid Search với AI Embeddings Cosine Similarity & RRF (Reciprocal Rank Fusion)."""
         q_tokens = self._tokenize(question)
-        q_text = question.lower()
 
-        # 1. Tính BM25 Ranks
+        # 1. Tính BM25 Lexical Overlap Ranks
         bm25_list: list[tuple[float, dict[str, Any]]] = []
         for doc in self.documents:
             overlap = len(q_tokens & doc["tokens"])
@@ -143,26 +210,16 @@ class CatalogRetriever:
         bm25_list.sort(key=lambda x: x[0], reverse=True)
         bm25_rank_map = {doc["field_name"]: rank + 1 for rank, (_, doc) in enumerate(bm25_list)}
 
-        # 2. Tính Dense Semantic Ranks
+        # 2. Tính Dense AI Embedding Cosine Similarity Ranks
+        q_emb = self.embedding_engine.encode_single(question)
         dense_list: list[tuple[float, dict[str, Any]]] = []
         for doc in self.documents:
-            score = 0.0
-            field_base = doc["field_name"].split(".")[-1].lower()
-            if field_base in q_text:
-                score += 2.0
-            if any(kw in q_text for kw in ["đáng sống", "livability", "chỉ số"]) and "livability" in doc["text"]:
-                score += 3.0
-            if any(kw in q_text for kw in ["tốc độ", "vận tốc", "tốc độ trung bình"]) and "speed" in doc["text"]:
-                score += 5.0
-            if any(kw in q_text for kw in ["không khí", "aqi", "bụi", "pm25"]) and "aqi" in doc["text"]:
-                score += 3.0
-            if any(kw in q_text for kw in ["đỗ xe", "bãi xe", "parking"]) and "parking" in doc["text"]:
-                score += 3.0
-            dense_list.append((score, doc))
+            cosine_sim = float(np.dot(q_emb, doc["embedding"]))
+            dense_list.append((cosine_sim, doc))
         dense_list.sort(key=lambda x: x[0], reverse=True)
         dense_rank_map = {doc["field_name"]: rank + 1 for rank, (_, doc) in enumerate(dense_list)}
 
-        # 3. Reciprocal Rank Fusion (RRF): Score = 1/(60 + Rank_Dense) + 1/(60 + Rank_BM25)
+        # 3. Reciprocal Rank Fusion (RRF)
         rrf_scores: list[tuple[float, dict[str, Any]]] = []
         for doc in self.documents:
             r_dense = dense_rank_map.get(doc["field_name"], 999)
@@ -172,7 +229,6 @@ class CatalogRetriever:
 
         rrf_scores.sort(key=lambda x: x[0], reverse=True)
 
-        # 4. Similarity Gap Check: Mở rộng pool nếu #1 và #2 điểm quá sát nhau (< 0.0005)
         effective_k = top_k
         if len(rrf_scores) >= 2:
             gap = rrf_scores[0][0] - rrf_scores[1][0]
@@ -192,13 +248,14 @@ class CatalogRetriever:
             else:
                 selected_dimensions.add(doc["field_name"])
 
-        # Auto-include section_id dimensions for selected cubes
+        # Co-occurrence Cube Expansion: Auto-include ALL measures & dimensions of the selected cubes
         for cube_name in selected_cubes:
             cube = self.catalog.cube(cube_name)
             if cube:
+                for m in cube.measures:
+                    selected_measures.add(m.name)
                 for d in cube.dimensions:
-                    if d.name.endswith(".section_id"):
-                        selected_dimensions.add(d.name)
+                    selected_dimensions.add(d.name)
 
         return {
             "measures": sorted(selected_measures),

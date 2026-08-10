@@ -100,15 +100,7 @@ class QueryValidator:
             self._resolve_filter_values(f, notes)
 
     def _resolve_filter_values(self, f: Any, notes: list[str]) -> None:
-        """Đối chiếu giá trị filter với tập giá trị đã biết trong sample_values.yaml.
-
-        Sprint sau: với dimension chưa có trong sample_values.yaml, thay chỗ này
-        bằng một lookup thật vào Cube (hoặc bảng cache giá trị dimension).
-        """
-        allowed = self.sample_values.allowed(f.member)
-        if not allowed:
-            return
-
+        """Đối chiếu giá trị filter với Alias Map hoặc sample_values.yaml."""
         resolved: list[str] = []
         for value in f.values:
             new_value, changed = self.sample_values.resolve(f.member, value)
@@ -121,9 +113,19 @@ class QueryValidator:
         self, query: CubeQuery, errors: list[str], notes: list[str]
     ) -> None:
         names = set(self.catalog.time_dimension_names())
+        target_cube = query.measures[0].split(".")[0] if query.measures else None
+
         for td in query.timeDimensions:
             if isinstance(td.dateRange, list):
                 td.dateRange = td.dateRange[0] if td.dateRange else None
+            
+            # Tự động đồng bộ timeDimension nếu LLM nhét nhầm timeDimension của Cube khác
+            if target_cube and td.dimension.split(".")[0] != target_cube:
+                correct_dim = self._single_time_dimension_for(query.measures[0])
+                if correct_dim:
+                    notes.append(f"Đã tự động sửa timeDimension từ '{td.dimension}' sang '{correct_dim}' để khớp với Cube '{target_cube}'.")
+                    td.dimension = correct_dim
+
             if td.dimension not in names:
                 errors.append(
                     f"Time dimension '{td.dimension}' không tồn tại. "
@@ -131,7 +133,6 @@ class QueryValidator:
                 )
                 continue
             if isinstance(td.dateRange, str) and td.dateRange not in RELATIVE_DATE_RANGES:
-                # Warn nhẹ nhưng không reject — Cube Core biết parse thêm nhiều dạng khác
                 notes.append(
                     f"dateRange '{td.dateRange}' không phải chuỗi chuẩn — Cube Core sẽ cố parse."
                 )
@@ -153,10 +154,10 @@ class QueryValidator:
                 )
 
     def _single_time_dimension_for(self, measure_name: str) -> str | None:
-        """Tự suy ra time dimension mặc định — chỉ khi cube có đúng một cái, không mơ hồ."""
+        """Tự suy ra time dimension mặc định của Cube."""
         cube_name = measure_name.split(".", 1)[0]
         cube = self.catalog.cube(cube_name)
-        if cube is None or len(cube.time_dimensions) != 1:
+        if cube is None or not cube.time_dimensions:
             return None
         return cube.time_dimensions[0].name
 

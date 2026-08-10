@@ -22,9 +22,6 @@ Trong bài toán Text-to-SQL Smart City, một câu hỏi thuộc kịch bản *
   "measures": [
     "traffic_flow.avg_speed"
   ],
-  "dimensions": [
-    "traffic_flow.section_id"
-  ],
   "filters": [
     {
       "member": "traffic_flow.section_id",
@@ -40,6 +37,7 @@ Trong bài toán Text-to-SQL Smart City, một câu hỏi thuộc kịch bản *
   ]
 }
 ```
+*(Ghi chú: Khi hỏi 1 con số cụ thể cho 1 khu vực, không cần khai báo `dimensions`. Thuộc tính `dimensions` chỉ dùng khi muốn gom nhóm so sánh nhiều phân khu, ví dụ: "Tốc độ trung bình từng khu vực hôm nay?")*
 
 ---
 
@@ -96,14 +94,26 @@ Trong bài toán Text-to-SQL Smart City, một câu hỏi thuộc kịch bản *
 * **Câu SQL do Cube Core tự biên dịch**:
   ```sql
   SELECT 
-    section_id AS traffic_flow_section_id, 
     AVG(avg_speed_kmh) AS traffic_flow_avg_speed
   FROM starrocks_gold.fact_traffic
   WHERE section_id = 'Khu biet thu' 
-    AND recorded_at >= '2026-08-09 00:00:00' 
-    AND recorded_at <= '2026-08-09 23:59:59'
-  GROUP BY 1;
+    AND recorded_at >= '2026-08-10 00:00:00' 
+    AND recorded_at < '2026-08-11 00:00:00';
   ```
 
 * **Phản hồi hoàn chỉnh trên Web UI (LLM NLG 8B Output)**:
   > *"Tốc độ giao thông trung bình tại phân khu **Khu biệt thự** hôm nay (09/08/2026) là **45.82 km/h** (Giao thông thông thoáng, di chuyển thuận lợi)."*
+
+---
+
+## 🎯 7. CƠ CHẾ XỬ LÝ FILTER THEO TỪNG KIỂU DỮ LIỆU (ENUM VS NON-ENUM)
+
+Hệ thống phân chia xử lý Bộ Lọc (`filters`) theo 4 nhóm kiểu dữ liệu với nguyên lý: **RAG tìm Tên Cột (Schema) ➔ LLM bóc tách Giá Trị ➔ Validator chuẩn hóa**:
+
+| Nhóm Kiểu Dữ Liệu | Ví dụ Cột (`member`) | Cách LLM bóc tách & Chọn phép toán | Cách Validator & System Xử Lý | Ví dụ SQL sinh ra |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Enum (Danh mục cố định)** | `section_id`<br>`lamp_status`<br>`incident_type`<br>`aqi_category` | Trích xuất từ Tiếng Việt:<br>*"ở Khu biệt thự"*, *"bãi quá tải"*, *"đèn hỏng"* | Tra từ điển `sample_values.yaml` / `sample_values.py` để quy đổi mờ ➔ **Điền mã chuẩn DB**: `"Khu biet thu"`, `"CRITICAL"`, `"FAULTY"`. | `WHERE section_id = 'Khu biet thu'`<br>`WHERE lamp_status = 'FAULTY'` |
+| **2. Chuỗi ID Thô** | `camera_id`<br>`pole_id`<br>`gw_id` | Bóc tách mã ID thô:<br>*"camera CAM_001"*, *"cột POLE_102"* | Kiểm tra không thuộc từ điển Enum ➔ **Giữ nguyên chuỗi ID thô**. | `WHERE camera_id = 'CAM_001'`<br>`WHERE pole_id = 'POLE_102'` |
+| **3. Số liệu Liên tục** | `avg_speed`<br>`power_kwh`<br>`duration_min`<br>`pm25` | Suy luận phép toán so sánh:<br>*"chạy nhanh hơn 60km/h"* ➔ `gt 60`<br>*"kéo dài trên 30 phút"* ➔ `gte 30` | Kiểm tra dạng số ➔ **Giữ nguyên con số thô & phép toán so sánh**. | `WHERE avg_speed_kmh > 60`<br>`WHERE duration_min >= 30` |
+| **4. Thời gian** | `recorded_at`<br>`timestamp_start`<br>`date` | Bóc tách ngữ nghĩa mốc ngày:<br>*"hôm nay"*, *"ngày 25/7"*, *"tháng 7/2026"* | Chuyển sang **`timeDimensions`**. Nếu người dùng gõ thiếu năm, **mặc định gắn năm 2026**. | `WHERE recorded_at >= '2026-07-25 00:00:00'`<br>`AND recorded_at <= '2026-07-25 23:59:59'` |
+
