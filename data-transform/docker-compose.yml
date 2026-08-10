@@ -210,10 +210,7 @@ services:
       - "8000:8000"
     environment:
       - CUBE_API_URL=http://cube:4000/cubejs-api/v1
-      - CUBE_API_TOKEN=devsecret
-      # Đổi provider LLM bằng cách sửa biến này (hoặc export trước khi `docker
-      # compose up`) — không cần sửa code. groq | openai | google | openrouter.
-      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - LLM_PROVIDER=${LLM_PROVIDER:-groq}
       - GROQ_API_KEY=${GROQ_API_KEY:-your_groq_api_key_here}
       - NLU_MODEL=llama-3.3-70b-versatile
       - NLG_MODEL=llama-3.1-8b-instant
