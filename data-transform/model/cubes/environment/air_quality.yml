@@ -9,36 +9,52 @@ cubes:
 
     measures:
       - name: avg_aqi
+        title: "Chi so chat luong khong khi trung binh (AQI)"
+        description: "Chi so AQI trung binh. <50: Tot, 51-100: Trung binh, >100: Xau cho suc khoe"
         sql: aqi
         type: avg
 
       - name: max_aqi
+        title: "Chi so AQI cao nhat"
+        description: "Gia tri AQI cao nhat ghi nhan duoc trong ky xem xet"
         sql: aqi
         type: max
 
       - name: avg_pm25
+        title: "Nong do bui min PM2.5 trung binh (ug/m3)"
+        description: "Nong do hat bui min PM2.5 trung binh trong khong khi, tinh bang microgam/m3"
         sql: pm25
         type: avg
 
       - name: avg_noise_db
+        title: "Do on trung binh (dBA)"
+        description: "Muc do tieng on trung binh do bang dBA. <50: Yen tinh, 50-70: Trung binh, >70: On ao"
         sql: noise_level_db
         type: avg
 
       - name: unhealthy_air_hours
-        sql: "CASE WHEN aqi > 100 THEN 1 ELSE 0 END"
+        title: "So gio khong khi xau"
+        description: "Tong so gio co AQI > 100 (nguong Unhealthy). Moi ban ghi log = 15 phut = 0.25 gio."
+        sql: "CASE WHEN aqi > 100 THEN 0.25 ELSE 0 END"
         type: sum
 
     dimensions:
       - name: id
+        title: "ID ban ghi"
+        description: "Ma dinh danh duy nhat cua ban ghi log cam bien moi truong"
         sql: id
         type: string
         primary_key: true
 
       - name: section_id
+        title: "Ma khu vuc"
+        description: "Ma dinh danh phan khu (Can ho, Khu biet thu, TTTM)"
         sql: section_id
         type: string
 
       - name: aqi_category
+        title: "Phan loai chat luong khong khi"
+        description: "Phan loai AQI: GOOD (<=50), MODERATE (51-100), UNHEALTHY (>100)"
         sql: |
           CASE 
             WHEN aqi <= 50 THEN 'GOOD'
@@ -48,6 +64,8 @@ cubes:
         type: string
 
       - name: noise_category
+        title: "Phan loai muc do on"
+        description: "Phan loai tieng on: QUIET (<50 dBA), MODERATE (50-70 dBA), NOISY (>70 dBA)"
         sql: |
           CASE 
             WHEN noise_level_db < 50 THEN 'QUIET'
@@ -57,6 +75,8 @@ cubes:
         type: string
 
       - name: recorded_at
+        title: "Thoi diem ghi nhan"
+        description: "Thoi diem ghi nhan do cam bien moi truong (tan suat 15 phut/ban ghi)"
         sql: timestamp
         type: time
 

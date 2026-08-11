@@ -9,50 +9,74 @@ cubes:
 
     measures:
       - name: total_records
+        title: "Tong so ban ghi do giao thong"
+        description: "Tong so ban ghi du lieu giao thong da ghi nhan trong ky"
         type: count
 
       - name: avg_vehicle_count
+        title: "So luong xe luu thong trung binh"
+        description: "So luong phuong tien di qua diem do trung binh trong moi chu ky 15 phut"
         sql: vehicle_count
         type: avg
 
       - name: sum_vehicle_count
+        title: "Tong so luong xe luu thong"
+        description: "Tong so luong phuong tien di qua tat ca diem do trong ky xem xet"
         sql: vehicle_count
         type: sum
 
       - name: max_vehicle_count
+        title: "So luong xe dinh diem"
+        description: "So luong phuong tien lon nhat ghi nhan trong mot chu ky 15 phut (thoi diem cao diem)"
         sql: vehicle_count
         type: max
 
       - name: avg_speed
+        title: "Toc do luu thong trung binh (km/h)"
+        description: "Toc do luu thong trung binh uoc tinh. Luu y: day la trung binh cua cac gia tri da pre-aggregate theo chu ky do 15 phut (Mean of Means), co the co sai lech nho so voi toc do thuc te theo phuong tien."
         sql: avg_speed_kmh
         type: avg
 
       - name: overspeed_count
+        title: "So lan vi pham toc do"
+        description: "Tong so lan do giao thong ghi nhan co phuong tien vuot qua toc do toi da cho phep"
         sql: "CASE WHEN overspeed_flag = true THEN 1 ELSE 0 END"
         type: sum
 
       - name: congestion_rate
+        title: "Ty le un tac giao thong (%)"
+        description: "Ty le phan tram thoi gian giao thong bi un tac (toc do < 15 km/h). 100% = lien tuc un tac."
         sql: "CASE WHEN avg_speed_kmh < 15.0 THEN 1.0 ELSE 0.0 END"
         type: avg
 
     dimensions:
       - name: id
+        title: "ID ban ghi"
+        description: "Ma dinh danh duy nhat cua ban ghi log giao thong"
         sql: id
         type: string
         primary_key: true
 
       - name: section_id
+        title: "Ma doan duong (khu vuc)"
+        description: "Ma dinh danh doan duong hoac phan khu (Can ho, Khu biet thu, TTTM)"
         sql: section_id
         type: string
 
       - name: camera_id
+        title: "Ma camera giao thong"
+        description: "Ma dinh danh thiet bi camera do luu luong giao thong"
         sql: device_id
         type: string
 
       - name: overspeed_flag
+        title: "Co vi pham toc do"
+        description: "True neu chu ky do nay co phuong tien vuot qua toc do toi da cho phep"
         sql: overspeed_flag
         type: boolean
 
       - name: recorded_at
+        title: "Thoi diem ghi nhan"
+        description: "Thoi diem ghi nhan du lieu giao thong (tan suat 15 phut/ban ghi)"
         sql: recorded_at
         type: time

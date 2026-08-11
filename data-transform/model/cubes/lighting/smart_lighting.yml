@@ -1,4 +1,4 @@
-cubes:
+﻿cubes:
   - name: smart_lighting
     sql: "SELECT * FROM starrocks_gold.fact_lighting WHERE is_valid = true"
 
@@ -9,44 +9,64 @@ cubes:
 
     measures:
       - name: total_power_kwh
+        title: "Tong dien nang tieu thu (kWh)"
+        description: "Tong dien nang tieu thu cua tat ca cot den trong ky xem xet, tinh bang kWh"
         sql: power_kwh
         type: sum
 
       - name: avg_power_per_pole
+        title: "Dien nang tieu thu trung binh moi cot den (kWh)"
+        description: "Dien nang tieu thu trung binh tren moi ban ghi log cua cot den, tinh bang kWh"
         sql: power_kwh
         type: avg
 
-      - name: sum_power_per_pole
-        sql: power_kwh
-        type: sum
-
       - name: faulty_lamp_count
+        title: "So cot den bi hong"
+        description: "So luong cot den vat ly phan biet (theo pole_id) co trang thai FAULTY trong ky xem xet. Day la so cot den thuc te, khong phai so lan log bao hong."
+        sql: "CASE WHEN status = 'FAULTY' THEN pole_id ELSE NULL END"
+        type: count_distinct
+
+      - name: faulty_event_count
+        title: "So luot cam bien bao hong"
+        description: "Tong so ban ghi log ghi nhan trang thai FAULTY. Moi ban ghi = 1 lan do 15 phut. Dung de phan tich tan suat su co, khong phai so cot den."
         sql: "CASE WHEN status = 'FAULTY' THEN 1 ELSE 0 END"
         type: sum
 
-      - name: faulty_lamp_pct
+      - name: faulty_time_pct
+        title: "Ty le thoi gian hong (%)"
+        description: "Phan tram thoi gian trung binh ma cac cot den co trang thai FAULTY, dua tren tan suat log 15 phut. Day la ty le thoi gian hong, khong phai ty le so cot den hong."
         sql: "CASE WHEN status = 'FAULTY' THEN 100.0 ELSE 0.0 END"
         type: avg
 
     dimensions:
       - name: id
+        title: "ID ban ghi"
+        description: "Ma dinh danh duy nhat cua ban ghi log cot den"
         sql: id
         type: string
         primary_key: true
 
       - name: section_id
+        title: "Ma khu vuc"
+        description: "Ma dinh danh phan khu (Can ho, Khu biet thu, TTTM)"
         sql: section_id
         type: string
 
       - name: pole_id
+        title: "Ma cot den"
+        description: "Ma dinh danh duy nhat cua cot den chieu sang vat ly"
         sql: pole_id
         type: string
 
       - name: lamp_status
+        title: "Trang thai cot den"
+        description: "Trang thai van hanh hien tai cua cot den: NORMAL (binh thuong), FAULTY (bi hong), DIMMED (giam sang)"
         sql: status
         type: string
 
       - name: operating_mode
+        title: "Che do chieu sang"
+        description: "Che do hoat dong cua cot den theo gio: EVENING_FULL (toi sang hoan toan 18h-23h), NIGHT_DIMMING (dem giam sang 1h-5h), DAY_OFF (ban ngay tat)"
         sql: |
           CASE 
             WHEN HOUR(recorded_at) BETWEEN 18 AND 23 THEN 'EVENING_FULL'
@@ -56,6 +76,8 @@ cubes:
         type: string
 
       - name: recorded_at
+        title: "Thoi diem ghi nhan"
+        description: "Thoi diem ghi nhan log trang thai cot den (tan suat 15 phut/ban ghi)"
         sql: recorded_at
         type: time
 

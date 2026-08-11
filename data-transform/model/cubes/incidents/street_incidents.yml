@@ -11,31 +11,45 @@ cubes:
 
     measures:
       - name: total_incidents
+        title: "Tong so su co giao thong"
+        description: "Tong so su co giao thong ghi nhan trong ky: tai nan, ngap lut, cong trinh, un tac nghiem trong"
         type: count
 
       - name: avg_duration_min
+        title: "Thoi gian xu ly trung binh (phut)"
+        description: "Thoi gian xu ly trung binh cua mot su co giao thong, tinh bang phut"
         sql: duration_min
         type: avg
 
       - name: total_impact_hours
+        title: "Tong so gio anh huong giao thong"
+        description: "Tong thoi gian anh huong giao thong cua tat ca su co trong ky, tinh bang gio. Moi su co la 1 ban ghi don le (khong phai log 15 phut)."
         sql: "duration_min / 60.0"
         type: sum
 
     dimensions:
       - name: id
+        title: "ID su co"
+        description: "Ma dinh danh duy nhat cua su co giao thong"
         sql: incident_id
         type: string
         primary_key: true
 
       - name: section_id
+        title: "Ma khu vuc xay ra su co"
+        description: "Ma dinh danh phan khu noi su co xay ra (Can ho, Khu biet thu, TTTM)"
         sql: section_id
         type: string
 
       - name: incident_type
+        title: "Loai su co"
+        description: "Phan loai su co: ACCIDENT (tai nan), FLOOD (ngap lut), CONSTRUCTION (cong trinh), CONGESTION (un tac)"
         sql: incident_type
         type: string
 
       - name: severity
+        title: "Muc do nghiem trong"
+        description: "Phan loai muc do dua tren thoi gian xu ly: MINOR (<30 phut), MAJOR (30-90 phut), CRITICAL (>90 phut)"
         sql: |
           CASE 
             WHEN duration_min < 30 THEN 'MINOR'
@@ -45,5 +59,7 @@ cubes:
         type: string
 
       - name: timestamp_start
+        title: "Thoi diem bat dau su co"
+        description: "Thoi diem su co bat dau duoc ghi nhan. Dung de loc theo khoang thoi gian."
         sql: timestamp_start
         type: time

@@ -9,43 +9,63 @@ cubes:
 
     measures:
       - name: total_records
+        title: "Tong so ban ghi log"
+        description: "Tong so ban ghi cam bien bai do xe da ghi nhan trong ky"
         type: count
 
-      - name: total_slots
+      - name: avg_slot_capacity
+        title: "Suc chua trung binh bai do xe (cho)"
+        description: "Suc chua trung binh cua bai do xe. He thong hien tai moi khu co 100 cho do xe."
         sql: slot_total
         type: avg
 
       - name: avg_occupied_slots
+        title: "So cho da su dung trung binh"
+        description: "So luong cho do xe dang bi chiem dung trung binh trong ky"
         sql: occupied_slots
         type: avg
 
       - name: max_occupied_slots
+        title: "So cho da su dung cao nhat"
+        description: "So luong cho do xe bi chiem dung cao nhat trong ky (do lu luong dinh diem)"
         sql: occupied_slots
         type: max
 
       - name: occupancy_pct
+        title: "Ty le lap day bai do xe (%)"
+        description: "Ty le phan tram cho do xe dang bi chiem dung so voi tong suc chua. 100% = het cho."
         sql: "occupied_slots * 100.0 / slot_total"
         type: avg
 
       - name: available_slots
+        title: "So cho do xe con trong"
+        description: "So luong cho do xe con trong trung binh. Bang tong suc chua tru so cho dang su dung."
         sql: "slot_total - occupied_slots"
         type: avg
 
     dimensions:
       - name: id
+        title: "ID ban ghi"
+        description: "Ma dinh danh duy nhat cua ban ghi log bai do xe"
         sql: id
         type: string
         primary_key: true
 
       - name: section_id
+        title: "Ma khu vuc"
+        description: "Ma dinh danh phan khu (Can ho, Khu biet thu, TTTM)"
         sql: section_id
         type: string
 
       - name: gateway_id
+        title: "Ma cong vao/ra bai do xe"
+        description: "Ma dinh danh cong vao hoac cong ra cua bai do xe"
         sql: gw_id
         type: string
 
       - name: occupancy_level
+        title: "Muc do lap day bai do xe"
+        description: "Phan cap muc do lap day: LOW (<50%), OPTIMAL (50-80%), CRITICAL (>80%)"
         sql: |
           CASE 
             WHEN (occupied_slots * 100.0 / slot_total) < 50 THEN 'LOW'
@@ -55,6 +75,8 @@ cubes:
         type: string
 
       - name: recorded_at
+        title: "Thoi diem ghi nhan"
+        description: "Thoi diem ghi nhan trang thai bai do xe (tan suat 15 phut/ban ghi)"
         sql: recorded_at
         type: time
 

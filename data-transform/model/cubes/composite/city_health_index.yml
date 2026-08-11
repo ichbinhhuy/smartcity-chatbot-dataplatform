@@ -11,44 +11,70 @@ cubes:
 
     measures:
       - name: avg_livability_index
+        title: "Chi so song tot trung binh"
+        description: "Diem livability trung binh cua khu vuc trong ky xem xet (thang diem 0-100). Dung de so sanh chat luong song giua cac khu."
         sql: livability_index
         type: avg
 
-      - name: sum_livability_index
+      - name: min_livability_index
+        title: "Chi so song tot thap nhat"
+        description: "Diem livability thap nhat ghi nhan duoc trong ky (thang 0-100)"
         sql: livability_index
-        type: sum
+        type: min
+
+      - name: max_livability_index
+        title: "Chi so song tot cao nhat"
+        description: "Diem livability cao nhat ghi nhan duoc trong ky (thang 0-100)"
+        sql: livability_index
+        type: max
 
       - name: avg_traffic_score
+        title: "Diem thanh phan giao thong"
+        description: "Diem so thanh phan giao thong trong chi so livability (thang 0-100)"
         sql: score_traffic
         type: avg
 
       - name: avg_env_score
+        title: "Diem thanh phan moi truong"
+        description: "Diem so thanh phan chat luong moi truong khong khi trong chi so livability (thang 0-100)"
         sql: score_env
         type: avg
 
       - name: avg_parking_score
+        title: "Diem thanh phan bai do xe"
+        description: "Diem so thanh phan bai do xe trong chi so livability (thang 0-100)"
         sql: score_parking
         type: avg
 
       - name: avg_lighting_score
+        title: "Diem thanh phan chieu sang"
+        description: "Diem so thanh phan he thong den duong trong chi so livability (thang 0-100)"
         sql: score_lighting
         type: avg
 
       - name: avg_safety_score
+        title: "Diem thanh phan an toan"
+        description: "Diem so thanh phan an toan giao thong (su co, tai nan) trong chi so livability (thang 0-100)"
         sql: score_safety
         type: avg
 
     dimensions:
       - name: id
+        title: "ID ban ghi"
+        description: "Khoa chinh tong hop tu section_id va date_key"
         sql: "CONCAT(section_id, '_', date_key)"
         type: string
         primary_key: true
 
       - name: section_id
+        title: "Ma khu vuc"
+        description: "Ma dinh danh phan khu (Can ho, Khu biet thu, TTTM)"
         sql: section_id
         type: string
 
       - name: livability_grade
+        title: "Xep hang chat luong song"
+        description: "Phan hang chi so livability: EXCELLENT (>=85), GOOD (70-84), POOR (<70)"
         sql: |
           CASE 
             WHEN livability_index >= 85 THEN 'EXCELLENT'
@@ -58,7 +84,9 @@ cubes:
         type: string
 
       - name: date
+        title: "Ngay tinh toan"
+        description: "Ngay tong hop chi so livability hang ngay. Dung de loc theo dateRange (last 7 days, last 30 days, etc.)"
         sql: date_key
-        type: string
+        type: time
 
 

@@ -82,13 +82,9 @@ class QueryValidator:
         valid_dims = []
         for d in query.dimensions:
             if target_cube and not d.startswith(target_cube + "."):
-                suffix = d.split(".")[-1]
-                corrected = f"{target_cube}.{suffix}"
-                if corrected in names:
-                    notes.append(f"Đã chuyển dimension '{d}' sang '{corrected}' cho khớp với Cube '{target_cube}'.")
-                    valid_dims.append(corrected)
-                else:
-                    notes.append(f"Đã bỏ dimension '{d}' thuộc Cube khác cho khớp với Cube '{target_cube}'.")
+                errors.append(
+                    f"Dimension '{d}' thuộc Cube khác với '{target_cube}'. Mọi chỉ số, chiều và bộ lọc phải thuộc cùng 1 Cube. Hãy chọn `{target_cube}.{d.split('.')[-1]}` nếu phù hợp."
+                )
             elif d not in names:
                 errors.append(f"Dimension '{d}' không tồn tại. {self._suggest(d, sorted(names))}")
             else:
@@ -111,13 +107,12 @@ class QueryValidator:
                 )
                 continue
 
-            # Auto-align filter member to target_cube if LLM picked a field from another candidate cube
+            # Strict Intent Validation: Báo lỗi lệch Cube đẩy về Repair Loop để LLM tự sửa thay vì silent mutate
             if target_cube and not f.member.startswith(target_cube + "."):
-                suffix = f.member.split(".")[-1]
-                corrected = f"{target_cube}.{suffix}"
-                if corrected in all_member_names:
-                    notes.append(f"Đã chuyển filter '{f.member}' sang '{corrected}' cho khớp với Cube '{target_cube}'.")
-                    f.member = corrected
+                errors.append(
+                    f"Filter member '{f.member}' thuộc Cube khác với '{target_cube}'. Mọi chỉ số, chiều và bộ lọc trong 1 truy vấn BẮT BUỘC phải thuộc về CÙNG một Cube. Hãy dùng `{target_cube}.{f.member.split('.')[-1]}` nếu lọc theo chiều tương ứng."
+                )
+                continue
 
             # Auto-correct: Nếu filter gọi phép toán số (lt, gt, lte, gte) với con số trên cột Enum -> chuyển sang cột Measure số
             if f.operator in ("lt", "lte", "gt", "gte") and f.values and (f.values[0].replace(".", "", 1).isdigit()):

@@ -1,39 +1,31 @@
-# BÁO CÁO TOÀN DIỆN KIẾN TRÚC SMART CITY TEXT-TO-SQL AI CHATBOT
+# SmartCity Text2SQL AI Chatbot — Architecture & Technical Specifications
 
-Nền tảng trợ lý AI phân tích dữ liệu Đô thị thông minh (Smart City) dựa trên kiến trúc **2-Phase LLM (NLU & NLG)**, kết hợp **Semantic Layer (Cube Core)**, **Vector Database (Qdrant Hybrid Search)** và **Data Warehouse (StarRocks Gold)**.
+> Tài liệu tổng hợp kiến trúc kỹ thuật toàn diện cho hệ thống SmartCity Text2SQL.
+> Bao gồm chi tiết hành trình biến đổi dữ liệu 5 chặng, Mẫu System Prompt 100% Đầy đủ, Triết lý Kiến trúc LLM Control & 4 Đề xuất Cải tiến Enterprise Governance.
 
 ---
 
-## 🏛️ 1. TỔNG QUAN HỆ THỐNG & CÔNG NGHỆ CHỦ ĐẠO
+## 🏗️ 1. Sơ đồ Luồng Biến đổi 5 Chặng (End-to-End Pipeline)
 
-```
-[1. User Question] ──▶ [2. Qdrant Hybrid Retrieval (RRF)] ◄── [Catalog Embeddings Cache]
-                                 │
-                                 ▼
-                     [3. Build Top-K Tool Schema]
-                                 │
-                                 ▼
-                        [4. LLM NLU (70B)]
-                                 │
-                        [5. Validator & Alias Mapper] ◄──▶ [6. Repair Loop]
-                                 │
-                                 ▼
-                        [7. Cube Core Engine] (Tự sinh SQL & chạy trên StarRocks)
-                                 │
-                                 ▼
-                        [8. LLM NLG (8B)] ──▶ [9. Web UI Response]
+```mermaid
+flowchart TD
+    A["1. Cube Schema YAMLs<br>(model/cubes/*.yml)"] -->|Cube Core Startup| B["2. API Meta Endpoint<br>(GET /cubejs-api/v1/meta)"]
+    B -->|fetch_catalog()| C["3. RAG Document Chunking & Indexing<br>(_build_rich_documents -> MiniLM-L12-v2 -> Qdrant)"]
+    D["💬 Câu hỏi Người dùng"] --> E["4. Semantic RAG Search<br>(BM25 + Dense Cosine + RRF Fusion -> Top-2 Candidates)"]
+    C --> E
+    E -->|Top-K Candidate Cubes| F["5. Full System Prompt Assembly<br>(11 Rules + Rich Vietnamese Metadata + Candidate Enums)"]
+    F -->|OpenAI Function Calling| G["6. LLM NLU Planner Output<br>(gpt-4o-mini nhả JSON query_metrics)"]
+    G --> H["7. 4-Layer Deterministic Validator & Repair Loop<br>(Strict Same-Cube Intent Check & Alias Resolution)"]
+    H -->|POST /cubejs-api/v1/load| I["8. Cube Core SQL Compiler<br>(Pushdown Optimization to StarRocks DW)"]
+    I --> J["9. Raw Result Data & NLG Phase<br>(Executive Report Format Display on Web UI)"]
 ```
 
-### Stack Công Nghệ chính:
-* **Data Warehouse**: StarRocks Gold Data Mart (`fact_traffic`, `fact_environment`, `fact_parking`, `fact_lighting`, `fact_incidents`, `gold_street_livability_daily`).
-* **Semantic Layer & Query Engine**: Cube Core (Self-Host, exposing REST API `/cubejs-api/v1/meta` & `/cubejs-api/v1/load`).
-* **Vector Database**: Qdrant (`qdrant/qdrant:latest`) chạy trên cổng `6333`.
+
 * **LLM Architecture**:
   - **Phase NLU (Tool Calling)**: `llama-3.3-70b-versatile` (Groq API).
   - **Phase NLG (Natural Text Summary)**: `llama-3.1-8b-instant` (Groq API).
 * **Retrieval Strategy**: **Hybrid Search** kết hợp giữa Dense Semantic Vector + Sparse BM25 với thuật toán **RRF (Reciprocal Rank Fusion)** và cơ chế **Similarity Gap Check**.
 
----
 
 ## 🔍 2. CHI TIẾT 8 LỚP TRONG PIPELINE (8-LAYER ARCHITECTURE)
 

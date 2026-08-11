@@ -227,7 +227,7 @@ services:
     depends_on:
       - cube
     restart: unless-stopped
-    mem_limit: 512m
+    mem_limit: 2g
 
   # ------------------------------------------------------------
   # 11. Apache Superset (BI Dashboard Platform)

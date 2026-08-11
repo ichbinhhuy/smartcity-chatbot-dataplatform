@@ -299,6 +299,8 @@
       border-radius: 18px;
       font-size: 0.95rem;
       line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
     .message.bot .msg-bubble {
@@ -871,7 +873,7 @@
     <!-- LIVE STATUS BADGES -->
     <div class="status-group">
       <div class="badge">
-        <div class="badge-dot"></div> Groq LLM (Llama 3.3 70B)
+        <div class="badge-dot"></div> ChatGPT (gpt-4o-mini)
       </div>
       <div class="badge">
         <div class="badge-dot"></div> Cube Core (Port 4000)
@@ -909,20 +911,20 @@
             <div class="sidebar-title">
               <i class="fa-solid fa-lightbulb" style="color: var(--accent-amber);"></i> Gợi ý câu hỏi nhanh
             </div>
-            <div class="prompt-pill" onclick="sendPrompt('So sánh chỉ số đáng sống Livability 3 phân đoạn đường')">
-              <span>Xếp hạng Livability 3 đường</span>
+            <div class="prompt-pill" onclick="sendPrompt('Cột đèn nào ở khu biệt thự tiêu thụ nhiều điện nhất hôm 25/7?')">
+              <span>⚡ Cột đèn tốn điện nhất Khu biệt thự</span>
               <i class="fa-solid fa-chevron-right"></i>
             </div>
-            <div class="prompt-pill" onclick="sendPrompt('Tốc độ giao thông trung bình ở SEC_001 là bao nhiêu?')">
-              <span>Tốc độ giao thông SEC_001</span>
+            <div class="prompt-pill" onclick="sendPrompt('Chất lượng không khí AQI ở khu căn hộ ngày 26/7 thế nào?')">
+              <span>🍃 Chất lượng không khí Khu căn hộ</span>
               <i class="fa-solid fa-chevron-right"></i>
             </div>
-            <div class="prompt-pill" onclick="sendPrompt('Chất lượng không khí AQI và PM2.5 ở SEC_003?')">
-              <span>Chỉ số AQI SEC_003</span>
+            <div class="prompt-pill" onclick="sendPrompt('Tốc độ giao thông trung bình ở trung tâm thương mại hôm 25/7 là bao nhiêu?')">
+              <span>🚗 Tốc độ giao thông TTTM</span>
               <i class="fa-solid fa-chevron-right"></i>
             </div>
-            <div class="prompt-pill" onclick="sendPrompt('Tỷ lệ lấp đầy bãi đỗ xe hiện tại thế nào?')">
-              <span>Bãi đỗ xe thông minh</span>
+            <div class="prompt-pill" onclick="sendPrompt('Tỷ lệ trống bãi đỗ xe ở khu biệt thự ngày 26/7 là bao nhiêu?')">
+              <span>🅿️ Tỷ lệ trống bãi đỗ xe Khu biệt thự</span>
               <i class="fa-solid fa-chevron-right"></i>
             </div>
           </div>
@@ -1236,18 +1238,100 @@
       const loadingId = appendLoadingMessage();
 
       try {
-        const res = await fetch('/api/chat', {
+        const res = await fetch('/api/chat/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ question: text })
         });
-        const data = await res.json();
-        removeMessage(loadingId);
-        appendBotMessage(data.answer, data.query);
+
+        if (!res.body) {
+          removeMessage(loadingId);
+          appendBotMessage('Lỗi kết nối stream từ server!', null);
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let done = false;
+        let buffer = '';
+        let fullAnswer = '';
+        let queryObj = null;
+        let botMsgElem = null;
+        let bubbleElem = null;
+
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith('data: ')) continue;
+              const jsonStr = trimmed.replace(/^data:\s*/, '');
+              try {
+                const evt = JSON.parse(jsonStr);
+                if (evt.type === 'meta') {
+                  removeMessage(loadingId);
+                  queryObj = evt.query;
+                  if (evt.status !== 'success') {
+                    fullAnswer = evt.answer || 'Có lỗi xảy ra!';
+                  }
+                  if (!botMsgElem) {
+                    botMsgElem = createBotMessageElement(fullAnswer, queryObj);
+                    bubbleElem = botMsgElem.querySelector('.msg-bubble');
+                    document.getElementById('chatMessages').appendChild(botMsgElem);
+                  }
+                } else if (evt.type === 'token') {
+                  removeMessage(loadingId);
+                  fullAnswer += evt.content;
+                  if (!botMsgElem) {
+                    botMsgElem = createBotMessageElement(fullAnswer, queryObj);
+                    bubbleElem = botMsgElem.querySelector('.msg-bubble');
+                    document.getElementById('chatMessages').appendChild(botMsgElem);
+                  } else if (bubbleElem) {
+                    bubbleElem.innerHTML = formatMarkdownText(fullAnswer);
+                  }
+                  const container = document.getElementById('chatMessages');
+                  container.scrollTop = container.scrollHeight;
+                } else if (evt.type === 'done') {
+                  done = true;
+                }
+              } catch (e) {}
+            }
+          }
+        }
       } catch (err) {
         removeMessage(loadingId);
         appendBotMessage('Lỗi kết nối tới Server Web FE. Vui lòng kiểm tra lại dịch vụ!', null);
       }
+    }
+
+    function createBotMessageElement(answer, queryObj) {
+      const msg = document.createElement('div');
+      msg.className = 'message bot';
+      let accordionHtml = '';
+      if (queryObj) {
+        accordionHtml = `
+          <div class="json-accordion">
+            <div class="json-header" onclick="this.nextElementSibling.classList.toggle('open')">
+              <span><i class="fa-solid fa-code"></i> Structured Cube Query JSON</span>
+              <i class="fa-solid fa-chevron-down"></i>
+            </div>
+            <div class="json-content">${JSON.stringify(queryObj, null, 2)}</div>
+          </div>
+        `;
+      }
+      msg.innerHTML = `
+        <div class="avatar"><i class="fa-solid fa-brain"></i></div>
+        <div class="msg-body">
+          <div class="msg-bubble">${formatMarkdownText(answer)}</div>
+          ${accordionHtml}
+        </div>
+      `;
+      return msg;
     }
 
     function appendUserMessage(text) {
@@ -1262,6 +1346,11 @@
       `;
       container.appendChild(msg);
       container.scrollTop = container.scrollHeight;
+    }
+
+    function formatMarkdownText(text) {
+      if (!text) return '';
+      return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     }
 
     function appendBotMessage(answer, queryObj) {
@@ -1282,10 +1371,12 @@
         `;
       }
 
+      const formattedAnswer = formatMarkdownText(answer);
+
       msg.innerHTML = `
         <div class="avatar"><i class="fa-solid fa-brain"></i></div>
         <div class="msg-body">
-          <div class="msg-bubble">${answer}</div>
+          <div class="msg-bubble">${formattedAnswer}</div>
           ${accordionHtml}
         </div>
       `;

@@ -14,22 +14,27 @@ from datetime import date, datetime, timezone, timedelta
 VN_TZ = timezone(timedelta(hours=7))
 
 _RULES = """\
-# Role
-Smart City NLU Assistant. Convert natural language questions into precise `query_metrics` tool calls.
+# Vai trò (Role)
+Trợ lý NLU Đô thị Thông minh (Smart City NLU Assistant). Nhiệm vụ của bạn là chuyển đổi câu hỏi tự nhiên của người dùng thành lời gọi hàm `query_metrics` chính xác.
 
-# Rules
-1. Only use measures, dimensions, and timeDimensions present in the catalog below.
-2. All measures in a single tool call MUST belong to the SAME cube.
-3. Time filtering MUST use `timeDimensions` (e.g., `air_quality.recorded_at`, `traffic_flow.recorded_at`, `city_health_index.date`, `smart_parking.recorded_at`, `smart_lighting.recorded_at`, `street_incidents.timestamp_start`).
-4. If no time range is specified, leave `timeDimensions` empty (system applies default).
-5. Preserve filter value names as written by user; system auto-maps section aliases (`Khu biet thu`, `Can ho`, `TTTM`).
-6. If a date or month is mentioned without a year (e.g., '27.7', 'ngày 25 tháng 7'), ALWAYS default the year to current year (2026).
+# Quy tắc cốt lõi (Rules)
+1. CHỈ sử dụng các chỉ số (measures), chiều (dimensions) và chiều thời gian (timeDimensions) có mặt trong Catalog bên dưới.
+2. Tất cả các measures trong 1 lời gọi tool BẮT BUỘC phải thuộc về CÙNG một Cube.
+3. QUAN TRỌNG - TRÍCH XUẤT ĐỦ CHỈ SỐ (MULTI-METRIC EXTRACTION): Bạn BẮT BUỘC phải trích xuất TẤT CẢ các chỉ số được đề cập hoặc hàm ý trong câu hỏi vào danh sách `measures`. TUYỆT ĐỐI KHÔNG bỏ rơi bất kỳ chỉ số nào được hỏi (Ví dụ: nếu người dùng hỏi cả 'số lần vi phạm' và 'tốc độ trung bình', phải đưa CẢ 2 measures vào danh sách).
+4. QUAN TRỌNG - NHẬN DIỆN KHUNG GIỜ (TIME GRANULARITY EXTRACTION): CHỈ gán `"granularity": "hour"` khi câu hỏi CÓ TỪ HỎI RÕ VỀ GIỜ (như 'mấy giờ', 'lúc mấy giờ', 'khung giờ nào', 'giờ cao điểm', 'vào giờ nào', 'theo từng giờ').
+5. QUAN TRỌNG - ĐIỀU KHIỂN GRANULARITY CHUNG: Khi câu hỏi hỏi tổng thể theo ngày/tuần/tháng (như 'hôm 25/7', 'ngày 25/7', 'tháng 7', 'tuần qua') MÀ KHÔNG hỏi mốc giờ, TUYỆT ĐỐI KHÔNG gán `granularity` (để `granularity` rỗng hoặc null) để hệ thống tính tổng tích lũy cho cả khoảng thời gian đó.
+6. QUAN TRỌNG - TRÍCH XUẤT DIMENSION KHI HỎI ĐỐI TƯỢNG (ENTITY QUESTION DIMENSIONS): Khi câu hỏi dạng 'X nào' (như 'đèn nào', 'cột đèn nào', 'camera nào', 'khu vực nào', 'sự cố nào'), bạn BẮT BUỘC phải đưa chiều định danh đối tượng tương ứng (như `smart_lighting.pole_id`, `traffic_flow.camera_id`, `section_id`) vào danh sách `dimensions` để hệ thống gom nhóm theo từng đối tượng.
+7. Lọc thời gian BẮT BUỘC sử dụng `timeDimensions` (vd: `air_quality.recorded_at`, `traffic_flow.recorded_at`, `city_health_index.date`, `smart_parking.recorded_at`, `smart_lighting.recorded_at`, `street_incidents.timestamp_start`).
+8. Nếu câu hỏi không nêu mốc thời gian, hãy để `timeDimensions` rỗng (hệ thống sẽ áp dụng thời gian mặc định).
+9. Giữ nguyên tên giá trị bộ lọc như người dùng viết; hệ thống tự động ánh xạ các tên gọi phân khu (`Khu biet thu`, `Can ho`, `TTTM`).
+10. Nếu ngày/tháng được nêu mà không có năm (vd: '27.7', 'ngày 25 tháng 7'), BẮT BUỘC lấy năm mặc định là năm hiện tại (2026).
+11. QUAN TRỌNG - SẮP XẾP HẠNG TOP/PEAK: Khi câu hỏi có từ so sánh nhất (như 'nhiều nhất', 'cao nhất', 'lớn nhất', 'ít nhất', 'thấp nhất', 'đông nhất'), bạn BẮT BUỘC phải gán `order` theo measure đó (`"direction": "desc"` hoặc `"asc"`) và gán `"limit": 1` (hoặc top N tương ứng).
 """
 
 
 def build_catalog_markdown(catalog: Catalog, candidates: dict[str, list[str]] | None = None) -> str:
-    """Mô tả catalog rút gọn tối ưu token cho LLM, hỗ trợ lọc theo Top-K candidates."""
-    lines: list[str] = ["# Catalog (Top-K Selected)"]
+    """Mô tả catalog đầy đủ tiêu đề và mô tả tiếng Việt chi tiết cho LLM."""
+    lines: list[str] = ["# Catalog (Danh mục chỉ số & chiều dữ liệu)"]
     cand_measures = set(candidates.get("measures", [])) if candidates else None
     cand_dimensions = set(candidates.get("dimensions", [])) if candidates else None
     cand_cubes = set(candidates.get("cubes", [])) if candidates else None
@@ -38,17 +43,29 @@ def build_catalog_markdown(catalog: Catalog, candidates: dict[str, list[str]] | 
         if cand_cubes and c.name not in cand_cubes:
             continue
 
-        m_list = [m.name for m in c.measures if cand_measures is None or m.name in cand_measures]
-        d_list = [d.name for d in c.dimensions if cand_dimensions is None or d.name in cand_dimensions]
-        t_list = [t.name for t in c.time_dimensions]
+        m_list = [m for m in c.measures if cand_measures is None or m.name in cand_measures]
+        d_list = [d for d in c.dimensions if cand_dimensions is None or d.name in cand_dimensions]
+        t_list = list(c.time_dimensions)
 
         if not m_list and not d_list:
             continue
 
-        lines.append(f"Cube `{c.name}` ({c.title}):")
-        if m_list: lines.append(f"  Measures: {', '.join(m_list)}")
-        if d_list: lines.append(f"  Dimensions: {', '.join(d_list)}")
-        if t_list: lines.append(f"  TimeDimensions: {', '.join(t_list)}")
+        lines.append(f"\n## Cube `{c.name}` ({c.title}):")
+        if m_list:
+            lines.append("  * Measures (Chỉ số đo lường):")
+            for m in m_list:
+                desc_str = f" - {m.description}" if m.description else ""
+                lines.append(f"    - `{m.name}` ({m.title}){desc_str}")
+        if d_list:
+            lines.append("  * Dimensions (Chiều phân tích):")
+            for d in d_list:
+                desc_str = f" - {d.description}" if d.description else ""
+                lines.append(f"    - `{d.name}` ({d.title}){desc_str}")
+        if t_list:
+            lines.append("  * TimeDimensions (Thời gian):")
+            for t in t_list:
+                desc_str = f" - {t.description}" if t.description else ""
+                lines.append(f"    - `{t.name}` ({t.title}){desc_str}")
     return "\n".join(lines)
 
 

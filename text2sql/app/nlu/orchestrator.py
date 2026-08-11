@@ -33,12 +33,13 @@ class NLUOrchestrator:
         llm_client: LLMClient,
         sample_values: SampleValues | None = None,
         settings: Settings | None = None,
+        retriever: CatalogRetriever | None = None,
     ) -> None:
         self.catalog = catalog
         self.settings = settings or default_settings
         self.llm = llm_client
         self.validator = QueryValidator(catalog, sample_values, self.settings)
-        self.retriever = CatalogRetriever(catalog)
+        self.retriever = retriever or CatalogRetriever(catalog)
 
     def interpret(
         self,
@@ -85,8 +86,7 @@ class NLUOrchestrator:
                     usage=usage_total,
                 )
 
-            # Model trả lời bằng text thay vì gọi tool = nó không chắc.
-            # Đây là cơ chế disambiguation, không phải lỗi.
+            # Model trả lời bằng text thay vì gọi tool = tự do hội thoại hoặc làm rõ
             if not parsed.has_tool_call:
                 messages.append({"role": "assistant", "content": parsed.raw_assistant_content})
                 return NLUResult(
@@ -121,28 +121,45 @@ class NLUOrchestrator:
             #   assistant: {role, content (str|null→""), tool_calls: [...]}
             #   tool:      {role:"tool", tool_call_id, content (str)}
             raw = parsed.raw_assistant_content
-            if isinstance(raw, dict):
-                # raw là message dict từ Groq response — đã đúng format OpenAI
-                # Nhưng Groq reject content=null, normalize thành ""
+            tool_call_id = parsed.tool_call_id or "call_1"
+            if isinstance(raw, dict) and raw.get("tool_calls"):
                 assistant_msg = dict(raw)
                 if assistant_msg.get("content") is None:
                     assistant_msg["content"] = ""
                 messages.append(assistant_msg)
+                for tc in assistant_msg["tool_calls"]:
+                    tc_id = tc.get("id", tool_call_id)
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc_id,
+                        "content": (
+                            "Tham số không hợp lệ:\n- "
+                            + "\n- ".join(result.errors)
+                            + "\nHãy gọi lại duy nhất 1 tool call với tham số đã sửa."
+                        ),
+                    })
             else:
-                messages.append({"role": "assistant", "content": raw or ""})
-
-            messages.append(
-                {
+                messages.append({
+                    "role": "assistant",
+                    "content": parsed.text or "",
+                    "tool_calls": [{
+                        "id": tool_call_id,
+                        "type": "function",
+                        "function": {
+                            "name": "query_metrics",
+                            "arguments": json.dumps(parsed.tool_input or {}, ensure_ascii=False)
+                        }
+                    }]
+                })
+                messages.append({
                     "role": "tool",
-                    "tool_call_id": parsed.tool_call_id or "call_1",
+                    "tool_call_id": tool_call_id,
                     "content": (
                         "Tham số không hợp lệ:\n- "
                         + "\n- ".join(result.errors)
-                        + "\nHãy gọi lại tool với tham số đã sửa, "
-                        "hoặc hỏi lại người dùng nếu vẫn chưa rõ."
+                        + "\nHãy gọi lại tool với tham số đã sửa."
                     ),
-                }
-            )
+                })
 
         return NLUResult(
             status=NLUStatus.INVALID,

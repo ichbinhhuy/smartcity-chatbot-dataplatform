@@ -10,7 +10,7 @@ from typing import Any
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -22,6 +22,7 @@ from app.llm.factory import get_llm_client
 from app.nlu.orchestrator import NLUOrchestrator
 from app.nlu.types import NLUStatus
 from app.query_engine.cube_client import CubeClient, CubeQueryError
+from app.retrieval.retriever import CatalogRetriever
 
 app = FastAPI(title="SmartCity AI Platform", version="1.0.0")
 
@@ -40,18 +41,63 @@ class ChatRequest(BaseModel):
     question: str
 
 
+_catalog_cache: Catalog | None = None
+_sample_values_cache: SampleValues | None = None
+_retriever_cache: CatalogRetriever | None = None
+
+
 def get_catalog() -> Catalog:
+    global _catalog_cache
+    if _catalog_cache is not None:
+        return _catalog_cache
+
+    # 1. Ưu tiên lấy live catalog từ Cube Core API
+    try:
+        live_cat = fetch_catalog(settings.cube_api_url, settings.cube_api_token)
+        if live_cat and live_cat.cubes:
+            _catalog_cache = live_cat
+            return _catalog_cache
+    except Exception:
+        pass
+
+    # 2. Fallback sang file fixture JSON tĩnh nếu Cube Core chưa sẵn sàng
     meta_fixture = settings.sample_values_path.parent.parent / "tests" / "fixtures" / "cube_meta.json"
     if meta_fixture.exists():
         try:
             payload = json.loads(meta_fixture.read_text(encoding="utf-8"))
-            return parse_catalog(payload)
+            _catalog_cache = parse_catalog(payload)
+            return _catalog_cache
         except Exception:
             pass
+
+    return Catalog(cubes=[])
+
+
+def get_sample_values() -> SampleValues:
+    global _sample_values_cache
+    if _sample_values_cache is None:
+        _sample_values_cache = SampleValues.load(settings.sample_values_path)
+    return _sample_values_cache
+
+
+def get_retriever(catalog: Catalog) -> CatalogRetriever:
+    global _retriever_cache
+    if _retriever_cache is None:
+        _retriever_cache = CatalogRetriever(catalog)
+    return _retriever_cache
+
+
+@app.on_event("startup")
+def warmup_services():
+    """Pre-warm catalog, retriever and SentenceTransformer model into RAM at startup."""
     try:
-        return fetch_catalog(settings.cube_api_url, settings.cube_api_token)
-    except Exception:
-        return Catalog(cubes=[])
+        print("[WARMUP] Dang pre-warm Catalog & RAG Engine va RAM...")
+        cat = get_catalog()
+        get_sample_values()
+        get_retriever(cat)
+        print("[WARMUP] Pre-warm hoan tat! Fast-Reject RAG Engine va RAM san sang <0.001s!")
+    except Exception as exc:
+        print(f"[WARMUP WARNING] Pre-warm error: {exc}")
 
 
 @app.get("/api/catalog")
@@ -427,7 +473,8 @@ def api_chat(req: ChatRequest):
         raise HTTPException(status_code=400, detail="Câu hỏi không được để trống")
 
     catalog = get_catalog()
-    sample_values = SampleValues.load(settings.sample_values_path)
+    sample_values = get_sample_values()
+    retriever = get_retriever(catalog)
 
     try:
         llm = get_llm_client()
@@ -442,6 +489,7 @@ def api_chat(req: ChatRequest):
         llm_client=llm,
         sample_values=sample_values,
         settings=settings,
+        retriever=retriever,
     )
 
     nlu_result = orchestrator.interpret(req.question)
@@ -477,7 +525,19 @@ def api_chat(req: ChatRequest):
         }
 
     # NLG Phase
-    nlg_prompt = "Bạn là trợ lý dữ liệu Smart City. Hãy dựa vào kết quả JSON dưới đây để trả lời câu hỏi của người dùng một cách tự nhiên, ngắn gọn và chính xác bằng tiếng Việt."
+    nlg_prompt = """\
+Bạn là Chuyên viên Phân tích Dữ liệu Đô thị Thông minh.
+Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả lời theo phong cách báo cáo quản trị chuyên nghiệp, chính xác và ngắn gọn bằng tiếng Việt.
+
+# Quy tắc định dạng báo cáo (Formatting Rules):
+1. **Tuyệt đối KHÔNG dùng icon hay emoji** (không sử dụng bất kỳ biểu tượng cảm xúc hay icon đồ họa nào).
+2. **Không dùng bảng markdown** (để tránh lỗi dính dòng trên giao diện). Hãy trình bày thông tin dưới dạng danh sách gạch đầu dòng rõ ràng, phân cấp mạch lạc và có xuống dòng đầy đủ.
+3. **Cấu trúc báo cáo**:
+   - **Tóm tắt tổng quan**: 1 câu trả lời trực tiếp nội dung chính.
+   - **Số liệu chi tiết**: Trình bày từng khu vực/hạng mục theo danh sách gạch đầu dòng, các chỉ số quan trọng được in đậm.
+   - **Nhận xét chính**: 1 câu đánh giá tổng kết về điểm cao nhất, thấp nhất hoặc xu hướng chính.
+4. **Định dạng số**: Làm tròn các con số thập phân đến 2 chữ số (ví dụ: 65.63, 63.90).
+"""
     nlg_messages = [
         {"role": "user", "content": f"Câu hỏi: {req.question}\nKết quả JSON từ Cube:\n{json.dumps(cube_data, ensure_ascii=False)}"}
     ]
@@ -495,6 +555,97 @@ def api_chat(req: ChatRequest):
         "data": cube_data.get("data", []),
         "annotation": cube_data.get("annotation", {})
     }
+
+
+@app.post("/api/chat/stream")
+def chat_stream(req: ChatRequest) -> StreamingResponse:
+    """SSE Streaming Endpoint: Nhả token câu trả lời trực tiếp theo thời gian thực."""
+    if not req.question or not req.question.strip():
+        raise HTTPException(status_code=400, detail="Câu hỏi không được để trống")
+
+    catalog = get_catalog()
+    sample_values = get_sample_values()
+    retriever = get_retriever(catalog)
+    llm = get_llm_client()
+
+    orchestrator = NLUOrchestrator(
+        catalog=catalog,
+        llm_client=llm,
+        sample_values=sample_values,
+        settings=settings,
+        retriever=retriever,
+    )
+
+    def event_generator():
+        nlu_result = orchestrator.interpret(req.question)
+
+        if nlu_result.status == NLUStatus.CLARIFICATION:
+            payload = {"type": "meta", "status": "clarification", "answer": nlu_result.message, "query": None}
+            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+            yield "data: {\"type\": \"done\"}\n\n"
+            return
+
+        if nlu_result.status != NLUStatus.QUERY or not nlu_result.query:
+            payload = {"type": "meta", "status": "error", "answer": f"Không thể tạo query: {nlu_result.message}", "query": None}
+            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+            yield "data: {\"type\": \"done\"}\n\n"
+            return
+
+        query_payload = nlu_result.query.to_cube_payload()
+        cube_client = CubeClient(settings=settings)
+
+        try:
+            cube_data = cube_client.load(nlu_result.query)
+        except CubeQueryError as exc:
+            payload = {"type": "meta", "status": "cube_error", "answer": f"Lỗi truy vấn Cube Core: {exc}", "query": query_payload}
+            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+            yield "data: {\"type\": \"done\"}\n\n"
+            return
+
+        # Emit Metadata event first
+        meta_payload = {
+            "type": "meta",
+            "status": "success",
+            "query": query_payload,
+            "data": cube_data.get("data", []),
+            "annotation": cube_data.get("annotation", {})
+        }
+        yield f"data: {json.dumps(meta_payload, ensure_ascii=False)}\n\n"
+
+        # Stream NLG text tokens
+        nlg_prompt = """\
+Bạn là Chuyên viên Phân tích Dữ liệu Đô thị Thông minh.
+Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả lời theo phong cách báo cáo quản trị chuyên nghiệp, chính xác và ngắn gọn bằng tiếng Việt.
+
+# Quy tắc định dạng báo cáo (Formatting Rules):
+1. **Tuyệt đối KHÔNG dùng icon hay emoji** (không sử dụng bất kỳ biểu tượng cảm xúc hay icon đồ họa nào).
+2. **Không dùng bảng markdown** (để tránh lỗi dính dòng trên giao diện). Hãy trình bày thông tin dưới dạng danh sách gạch đầu dòng rõ ràng, phân cấp mạch lạc và có xuống dòng đầy đủ.
+3. **Cấu trúc báo cáo**:
+   - **Tóm tắt tổng quan**: 1 câu trả lời trực tiếp nội dung chính.
+   - **Số liệu chi tiết**: Trình bày từng khu vực/hạng mục theo danh sách gạch đầu dòng, các chỉ số quan trọng được in đậm.
+   - **Nhận xét chính**: 1 câu đánh giá tổng kết về điểm cao nhất, thấp nhất hoặc xu hướng chính.
+4. **Định dạng số**: Làm tròn các con số thập phân đến 2 chữ số (ví dụ: 65.63, 63.90).
+"""
+        nlg_messages = [
+            {"role": "user", "content": f"Câu hỏi: {req.question}\nKết quả JSON từ Cube:\n{json.dumps(cube_data, ensure_ascii=False)}"}
+        ]
+
+        try:
+            if hasattr(llm, "generate_answer_stream"):
+                for chunk in llm.generate_answer_stream(nlg_prompt, nlg_messages):
+                    token_payload = {"type": "token", "content": chunk}
+                    yield f"data: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
+            else:
+                res = llm.generate_answer(nlg_prompt, nlg_messages)
+                token_payload = {"type": "token", "content": res.text}
+                yield f"data: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
+        except Exception as exc:
+            err_payload = {"type": "token", "content": f"\nLỗi Stream NLG: {exc}"}
+            yield f"data: {json.dumps(err_payload, ensure_ascii=False)}\n\n"
+
+        yield "data: {\"type\": \"done\"}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 # Mount Static Files and Root HTML

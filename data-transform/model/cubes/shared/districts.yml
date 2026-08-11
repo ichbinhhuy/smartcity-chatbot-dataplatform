@@ -4,18 +4,26 @@ cubes:
 
     dimensions:
       - name: id
+        title: "Ma khu vuc"
+        description: "Ma dinh danh duy nhat cua phan khu (Can ho, Khu biet thu, TTTM)"
         sql: section_id
         type: string
         primary_key: true
 
       - name: name
+        title: "Ten khu vuc"
+        description: "Ten day du cua phan khu trong du an do thi thong minh"
         sql: section_name
         type: string
 
       - name: max_speed_limit
+        title: "Toc do toi da cho phep (km/h)"
+        description: "Toc do toi da luu thong duoc phep trong phan khu, tinh bang km/h"
         sql: max_speed_limit
         type: number
 
       - name: total_parking_slots
+        title: "Tong so cho do xe cua khu vuc"
+        description: "Tong so cho do xe trong phan khu (dat tinh tu dim_sections, khong phai tu log)"
         sql: total_parking_slots
         type: number
