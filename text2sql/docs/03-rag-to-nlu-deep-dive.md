@@ -207,7 +207,38 @@ traffic_flow:       1/(60+3) + 1/(60+5) = 0.03125  ← #3
 
 **Kết quả:** Top-2 Cubes = `["air_quality", "city_health_index"]`
 
-**Bước 4:** Feed **100% measures + dimensions** của 2 cubes này sang bước xây dựng prompt.
+### 3.1 Cơ chế Tra cứu Catalog RAM từ Kết quả RAG (`candidates` Object)
+
+> **Mấu chốt:** RAG Engine không chỉ trả về 2 tên Cube đơn thuần, mà dùng tên 2 Cube đó để **tra cứu ngược vào `self.catalog` đang lưu trong bộ nhớ RAM** (`retriever.py → _retrieve_cube_first()`), từ đó nhả ra trọn bộ 100% measures và dimensions thuộc về 2 Cube đó:
+
+```python
+# 1. RAG chọn ra Top-2 Cubes: selected_cubes = ["air_quality", "city_health_index"]
+
+# 2. Tra cứu ngược vào "Cuốn từ điển Catalog" trong RAM (self.catalog):
+selected_measures: set[str] = set()
+selected_dimensions: set[str] = set()
+
+for c_name in selected_cubes:
+    cube = self.catalog.cube(c_name)  # 👈 Gõ cửa Catalog RAM bằng tên "air_quality"
+    if cube:
+        for m in cube.measures:
+            selected_measures.add(m.name)   # 👈 Trích xuất 100% measures (avg_aqi, max_aqi, avg_pm25...)
+        for d in cube.dimensions:
+            selected_dimensions.add(d.name) # 👈 Trích xuất 100% dimensions (section_id, aqi_category...)
+
+# 3. Đóng gói thành đối tượng candidates dictionary:
+candidates = {
+    "cubes": ["air_quality", "city_health_index"],
+    "measures": ["air_quality.avg_aqi", "air_quality.max_aqi", "air_quality.avg_pm25", "city_health_index.avg_env_score", ...],
+    "dimensions": ["air_quality.section_id", "air_quality.recorded_at", "city_health_index.section_id", ...]
+}
+```
+
+### 3.2 Bơm `candidates` vào System Prompt và Tool Schema
+
+Sau khi có `candidates`, Orchestrator truyền đối tượng này vào 2 quy trình:
+1. **`build_system_prompt(catalog, candidates)`:** Bỏ qua hoàn toàn các Cube không nằm trong `candidates["cubes"]` (như `traffic_flow`, `smart_parking`, `smart_lighting`), chỉ giữ lại Markdown mô tả của `air_quality` và `city_health_index`.
+2. **`build_tools(catalog, candidates)`:** Bơm chuỗi gợi ý candidate (`"Gợi ý Top-K candidate: air_quality.avg_aqi, air_quality.max_aqi..."`) trực tiếp vào mô tả (`description`) của `input_schema` trong Tool `query_metrics` gửi cho LLM.
 
 ---
 
