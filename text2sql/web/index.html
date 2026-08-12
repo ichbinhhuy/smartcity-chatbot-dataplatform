@@ -452,6 +452,22 @@
       transform: translateX(4px);
     }
 
+    .prompt-pill.chip {
+      display: inline-flex;
+      padding: 8px 14px;
+      margin: 4px 6px 0 0;
+    }
+
+    .clarification-chips {
+      display: flex;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .message.bot.clarification .msg-bubble {
+      border-left: 3px solid var(--accent-blue);
+    }
+
     /* TAB 2: BI DASHBOARD LIGHT */
     .superset-frame-wrap {
       display: block;
@@ -1223,6 +1239,8 @@
     });
 
     // CHATBOT LOGIC
+    let currentSessionId = null;  // giữ xuyên suốt phiên chat trong trang này; reset khi reload trang
+
     function sendPrompt(text) {
       document.getElementById('chatInput').value = text;
       sendMessage();
@@ -1241,7 +1259,7 @@
         const res = await fetch('/api/chat/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question: text })
+          body: JSON.stringify({ question: text, session_id: currentSessionId })
         });
 
         if (!res.body) {
@@ -1256,6 +1274,8 @@
         let buffer = '';
         let fullAnswer = '';
         let queryObj = null;
+        let statusVal = 'success';
+        let suggestions = null;
         let botMsgElem = null;
         let bubbleElem = null;
 
@@ -1276,11 +1296,14 @@
                 if (evt.type === 'meta') {
                   removeMessage(loadingId);
                   queryObj = evt.query;
+                  statusVal = evt.status || 'success';
+                  suggestions = evt.suggestions || null;
+                  if (evt.session_id) currentSessionId = evt.session_id;
                   if (evt.status !== 'success') {
                     fullAnswer = evt.answer || 'Có lỗi xảy ra!';
                   }
                   if (!botMsgElem) {
-                    botMsgElem = createBotMessageElement(fullAnswer, queryObj);
+                    botMsgElem = createBotMessageElement(fullAnswer, queryObj, statusVal, suggestions);
                     bubbleElem = botMsgElem.querySelector('.msg-bubble');
                     document.getElementById('chatMessages').appendChild(botMsgElem);
                   }
@@ -1288,7 +1311,7 @@
                   removeMessage(loadingId);
                   fullAnswer += evt.content;
                   if (!botMsgElem) {
-                    botMsgElem = createBotMessageElement(fullAnswer, queryObj);
+                    botMsgElem = createBotMessageElement(fullAnswer, queryObj, statusVal, suggestions);
                     bubbleElem = botMsgElem.querySelector('.msg-bubble');
                     document.getElementById('chatMessages').appendChild(botMsgElem);
                   } else if (bubbleElem) {
@@ -1309,9 +1332,11 @@
       }
     }
 
-    function createBotMessageElement(answer, queryObj) {
+    function createBotMessageElement(answer, queryObj, status, suggestions) {
       const msg = document.createElement('div');
-      msg.className = 'message bot';
+      msg.className = 'message bot' + (status === 'clarification' ? ' clarification' : '');
+      const icon = status === 'clarification' ? 'fa-circle-question' : 'fa-brain';
+
       let accordionHtml = '';
       if (queryObj) {
         accordionHtml = `
@@ -1324,10 +1349,19 @@
           </div>
         `;
       }
+
+      let chipsHtml = '';
+      if (status === 'clarification' && Array.isArray(suggestions) && suggestions.length) {
+        chipsHtml = '<div class="clarification-chips">' + suggestions.map(s =>
+          `<div class="prompt-pill chip" onclick="sendPrompt('${escapeJsStringLiteral(s)}')">${escapeHtml(s)}</div>`
+        ).join('') + '</div>';
+      }
+
       msg.innerHTML = `
-        <div class="avatar"><i class="fa-solid fa-brain"></i></div>
+        <div class="avatar"><i class="fa-solid ${icon}"></i></div>
         <div class="msg-body">
           <div class="msg-bubble">${formatMarkdownText(answer)}</div>
+          ${chipsHtml}
           ${accordionHtml}
         </div>
       `;
@@ -1351,6 +1385,16 @@
     function formatMarkdownText(text) {
       if (!text) return '';
       return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    function escapeJsStringLiteral(str) {
+      return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     }
 
     function appendBotMessage(answer, queryObj) {

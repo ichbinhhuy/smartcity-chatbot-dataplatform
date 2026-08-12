@@ -82,5 +82,18 @@ class Settings:
         default_factory=lambda: float(os.getenv("COSINE_THRESHOLD", "0.3"))
     )
 
+    # Session store cho multi-turn conversation (xem app/session/).
+    # "memory" (mặc định — an toàn cho `python -m app.main` / test, không cần
+    # Redis) | "redis" (dùng khi deploy thật — xem data-transform/docker-compose.yml).
+    session_store_backend: str = field(
+        default_factory=lambda: os.getenv("SESSION_STORE_BACKEND", "memory")
+    )
+    redis_url: str = field(
+        default_factory=lambda: os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    )
+    session_ttl_seconds: int = field(default_factory=lambda: _env_int("SESSION_TTL_SECONDS", 1800))
+    # Giới hạn số message giữ lại mỗi lần lưu — tránh phình context (và cost LLM) vô hạn.
+    max_history_messages: int = field(default_factory=lambda: _env_int("MAX_HISTORY_MESSAGES", 40))
+
 
 settings = Settings()

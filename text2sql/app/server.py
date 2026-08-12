@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,7 @@ from app.nlu.orchestrator import NLUOrchestrator
 from app.nlu.types import NLUStatus
 from app.query_engine.cube_client import CubeClient, CubeQueryError
 from app.retrieval.retriever import CatalogRetriever
+from app.session.factory import get_session_store
 import app.tracing as tracing
 
 app = FastAPI(title="SmartCity AI Platform", version="1.0.0")
@@ -40,6 +42,7 @@ WEB_DIR = settings.sample_values_path.parent.parent / "web"
 
 class ChatRequest(BaseModel):
     question: str
+    session_id: str | None = None
 
 
 _catalog_cache: Catalog | None = None
@@ -474,11 +477,44 @@ def api_lineage_graph():
     }
 
 
+_SAVE_STATUSES = {NLUStatus.QUERY, NLUStatus.CLARIFICATION, NLUStatus.INVALID}
+
+
+def _resolve_session(req_session_id: str | None) -> tuple[str, list[dict[str, Any]]]:
+    """Sinh session_id mới nếu client chưa có; nạp history hiện có ([] nếu mới/hết hạn)."""
+    session_id = req_session_id or uuid.uuid4().hex
+    return session_id, get_session_store().get(session_id)
+
+
+def _truncate_history(messages: list[dict[str, Any]], max_messages: int) -> list[dict[str, Any]]:
+    """Giữ N message gần nhất, nhưng không được để message đầu còn lại là
+    role="tool" (mồ côi, thiếu assistant.tool_calls đứng trước nó) — API kiểu
+    OpenAI-compat sẽ trả 400 nếu history bắt đầu bằng 1 "tool" message như vậy."""
+    if len(messages) <= max_messages:
+        return messages
+    trimmed = messages[-max_messages:]
+    while trimmed and trimmed[0].get("role") == "tool":
+        trimmed = trimmed[1:]
+    return trimmed
+
+
+def _persist_turn(session_id: str, nlu_result) -> None:
+    """Lưu history sau lượt NLU — bỏ qua ERROR/REFUSAL vì NLUOrchestrator.interpret()
+    không append lượt assistant tương ứng cho 2 status đó (xem app/nlu/orchestrator.py);
+    lưu lại sẽ tạo 2 lượt "user" liên tiếp trong history, làm hỏng lượt gọi kế tiếp."""
+    if nlu_result.status not in _SAVE_STATUSES:
+        return
+    trimmed = _truncate_history(nlu_result.messages, settings.max_history_messages)
+    get_session_store().save(session_id, trimmed, ttl_seconds=settings.session_ttl_seconds)
+
+
 @app.post("/api/chat")
 def api_chat(req: ChatRequest):
     """Xử lý câu hỏi tự nhiên qua LLM (provider chọn qua LLM_PROVIDER) + Cube Core."""
     if not req.question or not req.question.strip():
         raise HTTPException(status_code=400, detail="Câu hỏi không được để trống")
+
+    session_id, history = _resolve_session(req.session_id)
 
     catalog = get_catalog()
     sample_values = get_sample_values()
@@ -502,14 +538,17 @@ def api_chat(req: ChatRequest):
         retriever=retriever,
     )
 
-    nlu_result = orchestrator.interpret(req.question, langfuse_trace=lf_trace)
+    nlu_result = orchestrator.interpret(req.question, history=history, langfuse_trace=lf_trace)
+    _persist_turn(session_id, nlu_result)
 
     if nlu_result.status == NLUStatus.CLARIFICATION:
         res = {
             "status": "clarification",
             "answer": nlu_result.message,
             "query": None,
-            "data": []
+            "data": [],
+            "session_id": session_id,
+            "suggestions": nlu_result.suggestions,
         }
         lf_trace.update(output=res)
         return res
@@ -520,7 +559,8 @@ def api_chat(req: ChatRequest):
             "answer": f"Không thể tạo query: {nlu_result.message}",
             "errors": nlu_result.errors,
             "query": None,
-            "data": []
+            "data": [],
+            "session_id": session_id,
         }
         lf_trace.update(output=res)
         return res
@@ -538,7 +578,8 @@ def api_chat(req: ChatRequest):
             "status": "cube_error",
             "answer": f"Lỗi truy vấn Cube Core: {exc}",
             "query": query_payload,
-            "data": []
+            "data": [],
+            "session_id": session_id,
         }
         lf_trace.update(output=res)
         return res
@@ -580,7 +621,8 @@ Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả
         "answer": final_answer,
         "query": query_payload,
         "data": cube_data.get("data", []),
-        "annotation": cube_data.get("annotation", {})
+        "annotation": cube_data.get("annotation", {}),
+        "session_id": session_id,
     }
     lf_trace.update(output={"status": "success", "answer": final_answer})
     return res
@@ -595,7 +637,13 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
     catalog = get_catalog()
     sample_values = get_sample_values()
     retriever = get_retriever(catalog)
-    llm = get_llm_client()
+    try:
+        llm = get_llm_client()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Lỗi khởi tạo LLM Client (provider={settings.llm_provider}): {exc}",
+        )
 
     lf_trace = tracing.start_trace("smartcity_chat_stream", metadata={"endpoint": "/api/chat/stream", "question": req.question})
 
@@ -608,17 +656,32 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
     )
 
     def event_generator():
-        nlu_result = orchestrator.interpret(req.question, langfuse_trace=lf_trace)
+        session_id, history = _resolve_session(req.session_id)
+        nlu_result = orchestrator.interpret(req.question, history=history, langfuse_trace=lf_trace)
+        _persist_turn(session_id, nlu_result)
 
         if nlu_result.status == NLUStatus.CLARIFICATION:
-            payload = {"type": "meta", "status": "clarification", "answer": nlu_result.message, "query": None}
+            payload = {
+                "type": "meta",
+                "status": "clarification",
+                "answer": nlu_result.message,
+                "query": None,
+                "session_id": session_id,
+                "suggestions": nlu_result.suggestions,
+            }
             lf_trace.update(output=payload)
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
             yield "data: {\"type\": \"done\"}\n\n"
             return
 
         if nlu_result.status != NLUStatus.QUERY or not nlu_result.query:
-            payload = {"type": "meta", "status": "error", "answer": f"Không thể tạo query: {nlu_result.message}", "query": None}
+            payload = {
+                "type": "meta",
+                "status": "error",
+                "answer": f"Không thể tạo query: {nlu_result.message}",
+                "query": None,
+                "session_id": session_id,
+            }
             lf_trace.update(output=payload)
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
             yield "data: {\"type\": \"done\"}\n\n"
@@ -633,7 +696,13 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
             cube_span.end(output={"rows": len(cube_data.get("data", []))})
         except CubeQueryError as exc:
             cube_span.end(output={"error": str(exc)}, level="ERROR")
-            payload = {"type": "meta", "status": "cube_error", "answer": f"Lỗi truy vấn Cube Core: {exc}", "query": query_payload}
+            payload = {
+                "type": "meta",
+                "status": "cube_error",
+                "answer": f"Lỗi truy vấn Cube Core: {exc}",
+                "query": query_payload,
+                "session_id": session_id,
+            }
             lf_trace.update(output=payload)
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
             yield "data: {\"type\": \"done\"}\n\n"
@@ -645,7 +714,8 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
             "status": "success",
             "query": query_payload,
             "data": cube_data.get("data", []),
-            "annotation": cube_data.get("annotation", {})
+            "annotation": cube_data.get("annotation", {}),
+            "session_id": session_id,
         }
         yield f"data: {json.dumps(meta_payload, ensure_ascii=False)}\n\n"
 

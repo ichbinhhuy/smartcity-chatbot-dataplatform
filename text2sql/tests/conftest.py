@@ -40,9 +40,19 @@ def settings() -> Settings:
 class FakeLLMClient:
     """Trả về lần lượt các `LLMResponse` đã dựng sẵn, và ghi lại request để assert."""
 
-    def __init__(self, responses: list[LLMResponse]) -> None:
+    def __init__(
+        self,
+        responses: list[LLMResponse],
+        answer_responses: list[LLMResponse] | None = None,
+    ) -> None:
         self.responses = list(responses)
+        # None (mặc định) = generate_answer() trả 1 câu trả lời giả cố định, đủ
+        # dùng cho test chỉ cần đi qua nhánh NLG mà không quan tâm nội dung chính
+        # xác (vd test_server.py). Truyền list tường minh nếu cần assert nội
+        # dung/thứ tự cụ thể.
+        self.answer_responses = list(answer_responses) if answer_responses is not None else None
         self.calls: list[dict[str, Any]] = []
+        self.answer_calls: list[dict[str, Any]] = []
 
     def interpret_query(self, system_prompt, messages, tools):
         self.calls.append(
@@ -53,7 +63,12 @@ class FakeLLMClient:
         return self.responses.pop(0)
 
     def generate_answer(self, system_prompt, messages):
-        raise NotImplementedError("Chưa dùng tới trong test NLU hiện tại")
+        self.answer_calls.append({"system": system_prompt, "messages": [dict(m) for m in messages]})
+        if self.answer_responses is not None:
+            if not self.answer_responses:
+                raise AssertionError("FakeLLMClient hết answer_responses nhưng vẫn bị gọi thêm")
+            return self.answer_responses.pop(0)
+        return text_response("OK (fake NLG answer).")
 
 
 def tool_call_response(input: dict[str, Any], **kwargs: Any) -> LLMResponse:

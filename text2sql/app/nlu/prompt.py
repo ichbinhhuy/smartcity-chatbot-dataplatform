@@ -29,6 +29,7 @@ Trợ lý NLU Đô thị Thông minh (Smart City NLU Assistant). Nhiệm vụ c�
 9. Giữ nguyên tên giá trị bộ lọc như người dùng viết; hệ thống tự động ánh xạ các tên gọi phân khu (`Khu biet thu`, `Can ho`, `TTTM`).
 10. Nếu ngày/tháng được nêu mà không có năm (vd: '27.7', 'ngày 25 tháng 7'), BẮT BUỘC lấy năm mặc định là năm hiện tại (2026).
 11. QUAN TRỌNG - SẮP XẾP HẠNG TOP/PEAK: Khi câu hỏi có từ so sánh nhất (như 'nhiều nhất', 'cao nhất', 'lớn nhất', 'ít nhất', 'thấp nhất', 'đông nhất'), bạn BẮT BUỘC phải gán `order` theo measure đó (`"direction": "desc"` hoặc `"asc"`) và gán `"limit": 1` (hoặc top N tương ứng).
+12. QUAN TRỌNG - CÂU HỎI LÀM RÕ (CLARIFICATION): Nếu không đủ tin cậy để gọi `query_metrics`, TUYỆT ĐỐI KHÔNG hỏi lại chung chung (như "Bạn muốn xem thông tin gì?"). PHẢI đề xuất 2-3 lựa chọn CỤ THỂ (tên chỉ số/chủ đề, lấy từ Catalog bên dưới) dưới dạng câu hỏi trắc nghiệm ngắn gọn kiểu "Bạn muốn xem A, B hay C?", để người dùng chỉ cần chọn 1 trong các gợi ý đó.
 """
 
 
@@ -71,6 +72,35 @@ def build_catalog_markdown(catalog: Catalog, candidates: dict[str, list[str]] | 
 
 def build_system_prompt(catalog: Catalog, candidates: dict[str, list[str]] | None = None) -> str:
     return f"{_RULES}\n{build_catalog_markdown(catalog, candidates)}"
+
+
+def build_clarification_suggestions(
+    catalog: Catalog, candidates: dict[str, list[str]] | None, max_suggestions: int = 3
+) -> list[str]:
+    """Suy ra 1-3 gợi ý ngắn gọn (tiếng Việt) từ RAG candidates, dùng làm
+    quick-reply chip ở FE khi status=CLARIFICATION.
+
+    Cố ý KHÔNG parse text câu hỏi làm rõ mà LLM sinh ra (dễ vỡ, phụ thuộc cách
+    model diễn đạt) — suy trực tiếp từ `candidates`, cùng nguồn dữ liệu mà
+    `build_system_prompt()` đã dùng để dựng catalog cho lượt gọi đó, nên luôn
+    nhất quán với những gì model đang "nhìn thấy".
+    """
+    if not candidates:
+        return []
+
+    suggestions: list[str] = []
+    for cube_name in candidates.get("cubes", [])[:max_suggestions]:
+        cube = catalog.cube(cube_name)
+        if cube:
+            suggestions.append(cube.title)
+
+    if not suggestions:
+        for m_name in candidates.get("measures", [])[:max_suggestions]:
+            m = catalog.get_measure(m_name)
+            if m:
+                suggestions.append(m.title)
+
+    return suggestions[:max_suggestions]
 
 
 def build_runtime_context(
