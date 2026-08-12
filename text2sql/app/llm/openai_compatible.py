@@ -39,7 +39,7 @@ class OpenAICompatibleLLMClient:
         nlu_model: str | None = None,
         nlg_model: str | None = None,
         base_url: str | None = None,
-        timeout: float = 30.0,
+        timeout: float = 60.0,
     ) -> None:
         if not api_key:
             raise LLMError(
@@ -51,6 +51,9 @@ class OpenAICompatibleLLMClient:
         self.nlg_model = nlg_model or self.default_nlg_model
         self.base_url = (base_url or self.default_base_url).rstrip("/")
         self.timeout = timeout
+        # Timeout riêng cho streaming: connect có giới hạn nhưng read vô hạn
+        # để tránh lỗi 'incomplete chunked read' khi LLM stream dài.
+        self._stream_timeout = httpx.Timeout(connect=10.0, read=None, write=10.0, pool=10.0)
 
     def interpret_query(
         self,
@@ -141,7 +144,7 @@ class OpenAICompatibleLLMClient:
             "Content-Type": "application/json",
         }
         try:
-            with httpx.stream("POST", f"{self.base_url}/chat/completions", headers=headers, json=payload, timeout=self.timeout) as res:
+            with httpx.stream("POST", f"{self.base_url}/chat/completions", headers=headers, json=payload, timeout=self._stream_timeout) as res:
                 for line in res.iter_lines():
                     if not line or not line.startswith("data: "):
                         continue

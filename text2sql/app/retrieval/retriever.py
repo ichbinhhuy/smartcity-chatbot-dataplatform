@@ -35,13 +35,15 @@ class AIEmbeddingEngine:
             from sentence_transformers import SentenceTransformer
             print(f"[RAG Engine] Nạp SentenceTransformer ({model_name})...")
             self.model = SentenceTransformer(model_name)
-        except Exception:
+        except Exception as exc:
+            print(f"[RAG Engine Warning] SentenceTransformer failed: {exc}")
             try:
                 from fastembed import TextEmbedding
                 print(f"[RAG Engine] Nạp FastEmbed ({model_name})...")
                 self.backend = "fastembed"
                 self.model = TextEmbedding(model_name=model_name)
-            except Exception:
+            except Exception as exc2:
+                print(f"[RAG Engine Warning] FastEmbed failed: {exc2}")
                 print("[RAG Engine Notice] Dùng Hash Vector Fallback...")
                 self.backend = "hash"
                 self.model = None
@@ -93,6 +95,7 @@ class CatalogRetriever:
         catalog: Catalog,
         qdrant_host: str | None = None,
         mode: str | None = None,
+        cosine_threshold: float | None = None,
     ) -> None:
         self.catalog = catalog
         self.qdrant_host = qdrant_host or os.getenv("QDRANT_HOST", "qdrant")
@@ -100,6 +103,8 @@ class CatalogRetriever:
         # Chế độ Search: "CUBE_FIRST" (Cách 2) hoặc "COLUMN_HYBRID" (Cách 1)
         self.mode = mode or os.getenv("RETRIEVAL_MODE", "CUBE_FIRST")
         self.collection_name = "cube_catalog"
+        raw_threshold = os.getenv("COSINE_THRESHOLD", "0.3")
+        self.cosine_threshold = cosine_threshold if cosine_threshold is not None else float(raw_threshold)
         
         self.cube_documents: list[dict[str, Any]] = []
         self.column_documents: list[dict[str, Any]] = []
@@ -235,10 +240,10 @@ class CatalogRetriever:
     def retrieve(self, question: str, top_k: int = 5) -> dict[str, list[str]]:
         """Hỗ trợ Dual-Mode Search: CUBE_FIRST (Cách 2) hoặc COLUMN_HYBRID (Cách 1)."""
         if self.mode.upper() == "COLUMN_HYBRID":
-            print("[RAG] Đang chạy Mode 1: COLUMN_HYBRID (Search Cột lẻ tẻ + RRF Fusion)...")
+            print("[RAG] Retrieval Mode 1: COLUMN_HYBRID (Search Col + RRF Fusion)")
             return self._retrieve_column_hybrid(question, top_k)
         else:
-            print("[RAG] Đang chạy Mode 2: CUBE_FIRST (Stage 1 chọn Cube -> Nạp trọn bộ 100% Cột cho LLM)...")
+            print("[RAG] Retrieval Mode 2: CUBE_FIRST (Stage 1 Cube -> 100% Cols)")
             return self._retrieve_cube_first(question, top_k_cubes=2)
 
     def _retrieve_cube_first(self, question: str, top_k_cubes: int = 2) -> dict[str, list[str]]:
@@ -288,13 +293,20 @@ class CatalogRetriever:
                 for d in cube.dimensions:
                     selected_dimensions.add(d.name)
 
+        max_cosine = float(dense_list[0][0]) if dense_list else 0.0
+        # Tạm thời gỡ bỏ rào cản cosine 0.3
+        # is_out_of_domain = (max_cosine < self.cosine_threshold) if self.embedding_engine.backend != "hash" else False
+        is_out_of_domain = False
+
         return {
             "measures": sorted(selected_measures),
             "dimensions": sorted(selected_dimensions),
             "cubes": sorted(selected_cubes),
+            "max_cosine_score": max_cosine,
+            "is_out_of_domain": is_out_of_domain,
         }
 
-    def _retrieve_column_hybrid(self, question: str, top_k: int = 5) -> dict[str, list[str]]:
+    def _retrieve_column_hybrid(self, question: str, top_k: int = 5) -> dict[str, Any]:
         """MODE 1: Fallback Search cấp độ Cột (Column-level Hybrid Search)."""
         q_tokens = self._tokenize(question)
 
@@ -313,6 +325,11 @@ class CatalogRetriever:
             dense_list.append((cosine_sim, doc))
         dense_list.sort(key=lambda x: x[0], reverse=True)
         dense_rank_map = {doc["field_name"]: rank + 1 for rank, (_, doc) in enumerate(dense_list)}
+
+        max_cosine = float(dense_list[0][0]) if dense_list else 0.0
+        # Tạm thời gỡ bỏ rào cản cosine 0.3
+        # is_out_of_domain = (max_cosine < self.cosine_threshold) if self.embedding_engine.backend != "hash" else False
+        is_out_of_domain = False
 
         rrf_scores = []
         for doc in self.column_documents:
@@ -347,4 +364,6 @@ class CatalogRetriever:
             "measures": sorted(selected_measures),
             "dimensions": sorted(selected_dimensions),
             "cubes": sorted(selected_cubes),
+            "max_cosine_score": max_cosine,
+            "is_out_of_domain": is_out_of_domain,
         }

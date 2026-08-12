@@ -23,6 +23,7 @@ from app.nlu.orchestrator import NLUOrchestrator
 from app.nlu.types import NLUStatus
 from app.query_engine.cube_client import CubeClient, CubeQueryError
 from app.retrieval.retriever import CatalogRetriever
+import app.tracing as tracing
 
 app = FastAPI(title="SmartCity AI Platform", version="1.0.0")
 
@@ -98,6 +99,13 @@ def warmup_services():
         print("[WARMUP] Pre-warm hoan tat! Fast-Reject RAG Engine va RAM san sang <0.001s!")
     except Exception as exc:
         print(f"[WARMUP WARNING] Pre-warm error: {exc}")
+
+
+@app.on_event("shutdown")
+def shutdown_tracing():
+    """Flush pending Langfuse traces on server shutdown."""
+    print("[Langfuse] Flushing traces...")
+    tracing.flush()
 
 
 @app.get("/api/catalog")
@@ -484,6 +492,8 @@ def api_chat(req: ChatRequest):
             detail=f"Lỗi khởi tạo LLM Client (provider={settings.llm_provider}): {exc}",
         )
 
+    lf_trace = tracing.start_trace("smartcity_chat", metadata={"endpoint": "/api/chat", "question": req.question})
+
     orchestrator = NLUOrchestrator(
         catalog=catalog,
         llm_client=llm,
@@ -492,37 +502,46 @@ def api_chat(req: ChatRequest):
         retriever=retriever,
     )
 
-    nlu_result = orchestrator.interpret(req.question)
+    nlu_result = orchestrator.interpret(req.question, langfuse_trace=lf_trace)
 
     if nlu_result.status == NLUStatus.CLARIFICATION:
-        return {
+        res = {
             "status": "clarification",
             "answer": nlu_result.message,
             "query": None,
             "data": []
         }
+        lf_trace.update(output=res)
+        return res
 
     if nlu_result.status != NLUStatus.QUERY or not nlu_result.query:
-        return {
+        res = {
             "status": "error",
             "answer": f"Không thể tạo query: {nlu_result.message}",
             "errors": nlu_result.errors,
             "query": None,
             "data": []
         }
+        lf_trace.update(output=res)
+        return res
 
     query_payload = nlu_result.query.to_cube_payload()
     cube_client = CubeClient(settings=settings)
 
+    cube_span = tracing.start_span(lf_trace, "cube_query", input=query_payload)
     try:
         cube_data = cube_client.load(nlu_result.query)
+        cube_span.end(output={"rows": len(cube_data.get("data", []))})
     except CubeQueryError as exc:
-        return {
+        cube_span.end(output={"error": str(exc)}, level="ERROR")
+        res = {
             "status": "cube_error",
             "answer": f"Lỗi truy vấn Cube Core: {exc}",
             "query": query_payload,
             "data": []
         }
+        lf_trace.update(output=res)
+        return res
 
     # NLG Phase
     nlg_prompt = """\
@@ -542,19 +561,29 @@ Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả
         {"role": "user", "content": f"Câu hỏi: {req.question}\nKết quả JSON từ Cube:\n{json.dumps(cube_data, ensure_ascii=False)}"}
     ]
 
+    nlg_gen = tracing.start_generation(
+        lf_trace,
+        name="nlg_answer",
+        model=getattr(llm, "nlg_model", ""),
+        input={"prompt": nlg_prompt, "messages": nlg_messages},
+    )
     try:
         nlg_res = llm.generate_answer(nlg_prompt, nlg_messages)
         final_answer = nlg_res.text
+        nlg_gen.end(output={"text": final_answer})
     except Exception as exc:
         final_answer = f"Đã có dữ liệu từ Cube Core nhưng lỗi tóm tắt NLG: {exc}"
+        nlg_gen.end(output={"error": str(exc)}, level="ERROR")
 
-    return {
+    res = {
         "status": "success",
         "answer": final_answer,
         "query": query_payload,
         "data": cube_data.get("data", []),
         "annotation": cube_data.get("annotation", {})
     }
+    lf_trace.update(output={"status": "success", "answer": final_answer})
+    return res
 
 
 @app.post("/api/chat/stream")
@@ -568,6 +597,8 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
     retriever = get_retriever(catalog)
     llm = get_llm_client()
 
+    lf_trace = tracing.start_trace("smartcity_chat_stream", metadata={"endpoint": "/api/chat/stream", "question": req.question})
+
     orchestrator = NLUOrchestrator(
         catalog=catalog,
         llm_client=llm,
@@ -577,16 +608,18 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
     )
 
     def event_generator():
-        nlu_result = orchestrator.interpret(req.question)
+        nlu_result = orchestrator.interpret(req.question, langfuse_trace=lf_trace)
 
         if nlu_result.status == NLUStatus.CLARIFICATION:
             payload = {"type": "meta", "status": "clarification", "answer": nlu_result.message, "query": None}
+            lf_trace.update(output=payload)
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
             yield "data: {\"type\": \"done\"}\n\n"
             return
 
         if nlu_result.status != NLUStatus.QUERY or not nlu_result.query:
             payload = {"type": "meta", "status": "error", "answer": f"Không thể tạo query: {nlu_result.message}", "query": None}
+            lf_trace.update(output=payload)
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
             yield "data: {\"type\": \"done\"}\n\n"
             return
@@ -594,10 +627,14 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
         query_payload = nlu_result.query.to_cube_payload()
         cube_client = CubeClient(settings=settings)
 
+        cube_span = tracing.start_span(lf_trace, "cube_query", input=query_payload)
         try:
             cube_data = cube_client.load(nlu_result.query)
+            cube_span.end(output={"rows": len(cube_data.get("data", []))})
         except CubeQueryError as exc:
+            cube_span.end(output={"error": str(exc)}, level="ERROR")
             payload = {"type": "meta", "status": "cube_error", "answer": f"Lỗi truy vấn Cube Core: {exc}", "query": query_payload}
+            lf_trace.update(output=payload)
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
             yield "data: {\"type\": \"done\"}\n\n"
             return
@@ -630,16 +667,31 @@ Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả
             {"role": "user", "content": f"Câu hỏi: {req.question}\nKết quả JSON từ Cube:\n{json.dumps(cube_data, ensure_ascii=False)}"}
         ]
 
+        nlg_gen = tracing.start_generation(
+            lf_trace,
+            name="nlg_answer_stream",
+            model=getattr(llm, "nlg_model", ""),
+            input={"prompt": nlg_prompt, "messages": nlg_messages},
+        )
+        full_text = []
+
         try:
             if hasattr(llm, "generate_answer_stream"):
                 for chunk in llm.generate_answer_stream(nlg_prompt, nlg_messages):
+                    full_text.append(chunk)
                     token_payload = {"type": "token", "content": chunk}
                     yield f"data: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
             else:
                 res = llm.generate_answer(nlg_prompt, nlg_messages)
+                full_text.append(res.text)
                 token_payload = {"type": "token", "content": res.text}
                 yield f"data: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
+
+            final_ans = "".join(full_text)
+            nlg_gen.end(output={"text": final_ans})
+            lf_trace.update(output={"status": "success", "answer": final_ans})
         except Exception as exc:
+            nlg_gen.end(output={"error": str(exc)}, level="ERROR")
             err_payload = {"type": "token", "content": f"\nLỗi Stream NLG: {exc}"}
             yield f"data: {json.dumps(err_payload, ensure_ascii=False)}\n\n"
 

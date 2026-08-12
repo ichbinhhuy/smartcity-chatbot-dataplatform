@@ -10,6 +10,7 @@ Không có bước dịch nào ở đây: `CubeQuery` gửi thẳng cho Cube Cor
 
 from __future__ import annotations
 
+import json
 from datetime import date
 from typing import Any
 
@@ -24,6 +25,7 @@ from app.nlu.tool_schema import build_tools
 from app.nlu.types import NLUResult, NLUStatus
 from app.nlu.validator import QueryValidator
 from app.retrieval.retriever import CatalogRetriever
+import app.tracing as tracing
 
 
 class NLUOrchestrator:
@@ -46,12 +48,35 @@ class NLUOrchestrator:
         question: str,
         history: list[dict[str, Any]] | None = None,
         today: date | None = None,
+        langfuse_trace: Any = None,
     ) -> NLUResult:
         messages = list(history or [])
         messages.extend(self._build_user_turn(question, today))
 
         # 1. Retrieval Layer: Semantic Search Top-K candidates (K=5)
+        rag_span = tracing.start_span(langfuse_trace, "rag_retrieval", input={"question": question})
         candidates = self.retriever.retrieve(question, top_k=5)
+        max_cosine = float(candidates.get("max_cosine_score", 0.0))
+        is_ood = bool(candidates.get("is_out_of_domain", False))
+
+        rag_span.end(output={
+            "cubes": candidates.get("cubes", []),
+            "max_cosine_score": max_cosine,
+            "is_out_of_domain": is_ood,
+        })
+
+        # 1.5. Check Cosine Similarity Out-of-Domain Guardrail (< 0.3 -> Trả văn mẫu) - TẠM THỜI GỠ BỎ
+        # if is_ood:
+        #     out_of_domain_msg = (
+        #         "Câu hỏi không liên quan hoặc nằm ngoài phạm vi dữ liệu hỗ trợ của hệ thống Đô thị Thông minh. "
+        #         "Vui lòng thử lại với các câu hỏi liên quan đến chỉ số đáng sống, chất lượng không khí, giao thông, bãi đỗ xe, chiếu sáng hoặc sự cố đường phố."
+        #     )
+        #     return NLUResult(
+        #         status=NLUStatus.CLARIFICATION,
+        #         message=out_of_domain_msg,
+        #         errors=[f"Out of domain query: Max Cosine score ({max_cosine:.4f}) < threshold ({self.retriever.cosine_threshold})"],
+        #         messages=messages,
+        #     )
 
         # 2. Dynamic Tool Schema & System Prompt based on Top-K candidates
         system_prompt = build_system_prompt(self.catalog, candidates)
@@ -63,9 +88,17 @@ class NLUOrchestrator:
         last_raw: dict[str, Any] | None = None
 
         for attempt in range(attempts):
+            nlu_gen = tracing.start_generation(
+                langfuse_trace,
+                name=f"nlu_llm_attempt_{attempt + 1}",
+                model=getattr(self.llm, "nlu_model", ""),
+                input={"system": system_prompt[:500] + "...", "messages": messages},
+                metadata={"attempt": attempt + 1, "top_cubes": candidates.get("cubes", [])},
+            )
             try:
                 response = self.llm.interpret_query(system_prompt, messages, tools)
             except LLMError as exc:
+                nlu_gen.end(output={"error": str(exc)}, level="ERROR")
                 return NLUResult(
                     status=NLUStatus.ERROR,
                     message=str(exc),
@@ -75,6 +108,11 @@ class NLUOrchestrator:
                 )
 
             _accumulate(usage_total, response.usage)
+            nlu_gen.end(
+                output={"usage": response.usage},
+                usage={"input": response.usage.get("prompt_tokens", 0),
+                       "output": response.usage.get("completion_tokens", 0)},
+            )
             parsed = parse_response(response)
 
             if parsed.is_refusal:

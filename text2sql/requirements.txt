@@ -6,4 +6,5 @@ uvicorn[standard]>=0.22.0
 qdrant-client>=1.9.0
 fastembed>=0.3.0
 sentence-transformers>=2.2.0
+langfuse>=2.0.0
 

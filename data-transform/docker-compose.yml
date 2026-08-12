@@ -108,6 +108,7 @@ services:
       - CUBEJS_DB_NAME=starrocks_gold
       - CUBEJS_DB_USER=root
       - CUBEJS_API_SECRET=devsecret
+      - CUBEJS_TIMEZONE=UTC
       - CUBEJS_PG_SQL_PORT=15432
     volumes:
       - ./model/cubes:/cube/conf/schema
@@ -118,23 +119,7 @@ services:
     mem_limit: 512m
 
   # ------------------------------------------------------------
-  # 6. Metabase (BI Dashboard)
-  # ------------------------------------------------------------
-  metabase:
-    image: metabase/metabase:v0.47.2
-    container_name: smartcity_metabase
-    ports:
-      - "3000:3000"
-    environment:
-      - MB_DB_TYPE=h2
-      - JAVA_OPTS=-Xms256m -Xmx512m
-    volumes:
-      - metabase_data:/metabase-data
-    restart: unless-stopped
-    mem_limit: 768m
-
-  # ------------------------------------------------------------
-  # 7. PostgreSQL (Metadata Database cho Airflow)
+  # 6. PostgreSQL (Metadata Database cho Airflow)
   # ------------------------------------------------------------
   postgres-db:
     image: postgres:15-alpine
@@ -218,12 +203,16 @@ services:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - SUPERSET_EMBED_URL=http://localhost:8088/superset/dashboard/1/?standalone=true
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_BASE_URL=${LANGFUSE_BASE_URL:-https://us.cloud.langfuse.com}
 
 
     volumes:
       - ../text2sql/app:/app/app
       - ../text2sql/semantic:/app/semantic
       - ../text2sql/web:/app/web
+      - hf_cache:/root/.cache  # Cache model HuggingFace/FastEmbed, bền vững qua rebuild
     depends_on:
       - cube
     restart: unless-stopped
@@ -239,8 +228,10 @@ services:
       - "8088:8088"
     environment:
       - SUPERSET_SECRET_KEY=smartcity_superset_secret_key_2026
+      - PYTHONPATH=/app/pythonpath
     volumes:
       - superset_data:/app/superset_home
+      - ./superset_config.py:/app/pythonpath/superset_config.py
     restart: unless-stopped
     mem_limit: 1g
 
@@ -263,7 +254,7 @@ volumes:
   nifi_conf:
   starrocks_data:
   nessie_data:
-  metabase_data:
   postgres_data:
   superset_data:
   qdrant_storage:
+  hf_cache:  # Lưu model HuggingFace/FastEmbed bền vững, không tải lại khi rebuild

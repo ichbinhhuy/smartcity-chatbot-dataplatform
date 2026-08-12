@@ -77,6 +77,10 @@ class Settings:
     default_relative_period: str = field(
         default_factory=lambda: os.getenv("DEFAULT_RELATIVE_PERIOD", "last 30 days")
     )
+    # Ngưỡng điểm Cosine Similarity tối thiểu để xác định câu hỏi có thuộc phạm vi catalog hay không.
+    cosine_threshold: float = field(
+        default_factory=lambda: float(os.getenv("COSINE_THRESHOLD", "0.3"))
+    )
 
 
 settings = Settings()
