@@ -89,4 +89,7 @@ class NLUResult(BaseModel):
     raw_tool_input: dict[str, Any] | None = None
     # Lịch sử hội thoại đã cập nhật, dùng cho lượt tiếp theo (multi-turn).
     messages: list[dict[str, Any]] = Field(default_factory=list)
+    # Gợi ý ngắn gọn (tối đa 3) rút từ RAG candidates khi status=CLARIFICATION —
+    # dùng để render quick-reply chip ở FE (xem app/nlu/prompt.py:build_clarification_suggestions).
+    suggestions: list[str] = Field(default_factory=list)
     usage: dict[str, int] = Field(default_factory=dict)

@@ -98,6 +98,59 @@ def test_gives_up_after_max_repair_attempts(catalog, sample_values, settings):
     assert len(orch.llm.calls) == settings.max_repair_attempts + 1
 
 
+def test_clarification_history_feeds_into_second_turn(catalog, sample_values, settings):
+    """Round-trip clarification thật: lượt 1 hỏi lại, lượt 2 (dùng messages của
+    lượt 1 làm history) phải hiểu được ý người dùng nhờ ngữ cảnh — đồng thời
+    assert trực tiếp bug double-nesting content đã sửa (xem orchestrator.py
+    `_append_assistant_message`)."""
+    clarify_text = "Bạn muốn xem tốc độ hay lưu lượng xe?"
+    orch = _orchestrator(
+        catalog,
+        sample_values,
+        settings,
+        [
+            text_response(
+                clarify_text,
+                raw_assistant_content={"role": "assistant", "content": clarify_text},
+            ),
+            tool_call_response({"measures": ["traffic_flow.avg_speed"]}),
+        ],
+    )
+
+    first = orch.interpret("Cho tôi xem giao thông")
+    assert first.status is NLUStatus.CLARIFICATION
+
+    # Assertion trực tiếp cho bug double-nesting: nếu code cũ còn
+    # messages.append({"role": "assistant", "content": parsed.raw_assistant_content}),
+    # content sẽ là 1 dict lồng, KHÔNG phải str.
+    assistant_msg = first.messages[-1]
+    assert assistant_msg["role"] == "assistant"
+    assert isinstance(assistant_msg["content"], str)
+    assert assistant_msg["content"] == clarify_text
+
+    second = orch.interpret("Tốc độ", history=first.messages)
+    assert second.status is NLUStatus.QUERY
+    assert second.query.measures == ["traffic_flow.avg_speed"]
+
+    # Lượt gọi thứ 2 lên LLM phải chứa cả history lượt 1 lẫn câu hỏi mới.
+    second_call_messages = orch.llm.calls[1]["messages"]
+    assert second_call_messages[0]["content"].startswith("Cho tôi xem giao thông")
+    assert second_call_messages[-1]["content"].startswith("Tốc độ")
+
+
+def test_clarification_includes_suggestions_from_candidates(catalog, sample_values, settings):
+    orch = _orchestrator(
+        catalog,
+        sample_values,
+        settings,
+        [text_response("Bạn muốn xem chỉ số nào?")],
+    )
+    result = orch.interpret("Cho tôi xem giao thông đường xxx")
+
+    assert result.status is NLUStatus.CLARIFICATION
+    assert isinstance(result.suggestions, list)
+
+
 def test_runtime_context_goes_after_the_question(catalog, sample_values, settings):
     """System prompt phải giữ nguyên byte để prompt cache (nếu provider hỗ trợ) còn tác dụng."""
     orch = _orchestrator(

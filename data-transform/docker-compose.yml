@@ -184,6 +184,17 @@ services:
     mem_limit: 512m
 
   # ------------------------------------------------------------
+  # 9b. Redis (Session Store — multi-turn conversation cho SmartCity Web FE)
+  # ------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: smartcity_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    mem_limit: 128m
+
+  # ------------------------------------------------------------
   # 10. SmartCity Web FE (FastAPI Chatbot & BI Dashboard)
   # ------------------------------------------------------------
   web:
@@ -195,10 +206,10 @@ services:
       - "8000:8000"
     environment:
       - CUBE_API_URL=http://cube:4000/cubejs-api/v1
-      - LLM_PROVIDER=${LLM_PROVIDER:-groq}
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - GROQ_API_KEY=${GROQ_API_KEY:-your_groq_api_key_here}
-      - NLU_MODEL=llama-3.3-70b-versatile
-      - NLG_MODEL=llama-3.1-8b-instant
+      - NLU_MODEL=gpt-4o-mini
+      - NLG_MODEL=gpt-4o-mini
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
@@ -206,6 +217,9 @@ services:
       - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
       - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
       - LANGFUSE_BASE_URL=${LANGFUSE_BASE_URL:-https://us.cloud.langfuse.com}
+      - SESSION_STORE_BACKEND=${SESSION_STORE_BACKEND:-redis}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - SESSION_TTL_SECONDS=${SESSION_TTL_SECONDS:-1800}
 
 
     volumes:
@@ -215,6 +229,7 @@ services:
       - hf_cache:/root/.cache  # Cache model HuggingFace/FastEmbed, bền vững qua rebuild
     depends_on:
       - cube
+      - redis
     restart: unless-stopped
     mem_limit: 2g
 

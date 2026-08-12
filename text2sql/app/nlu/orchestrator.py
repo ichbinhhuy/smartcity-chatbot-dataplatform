@@ -20,7 +20,7 @@ from app.config import Settings, settings as default_settings
 from app.llm.client import LLMClient
 from app.llm.types import LLMError
 from app.nlu.parser import parse_response
-from app.nlu.prompt import build_runtime_context, build_system_prompt
+from app.nlu.prompt import build_clarification_suggestions, build_runtime_context, build_system_prompt
 from app.nlu.tool_schema import build_tools
 from app.nlu.types import NLUResult, NLUStatus
 from app.nlu.validator import QueryValidator
@@ -126,11 +126,12 @@ class NLUOrchestrator:
 
             # Model trả lời bằng text thay vì gọi tool = tự do hội thoại hoặc làm rõ
             if not parsed.has_tool_call:
-                messages.append({"role": "assistant", "content": parsed.raw_assistant_content})
+                _append_assistant_message(messages, parsed.raw_assistant_content)
                 return NLUResult(
                     status=NLUStatus.CLARIFICATION,
                     message=parsed.text or "Bạn có thể nói rõ hơn về chỉ số bạn muốn xem không?",
                     messages=messages,
+                    suggestions=build_clarification_suggestions(self.catalog, candidates),
                     usage=usage_total,
                 )
 
@@ -161,10 +162,7 @@ class NLUOrchestrator:
             raw = parsed.raw_assistant_content
             tool_call_id = parsed.tool_call_id or "call_1"
             if isinstance(raw, dict) and raw.get("tool_calls"):
-                assistant_msg = dict(raw)
-                if assistant_msg.get("content") is None:
-                    assistant_msg["content"] = ""
-                messages.append(assistant_msg)
+                assistant_msg = _append_assistant_message(messages, raw)
                 for tc in assistant_msg["tool_calls"]:
                     tc_id = tc.get("id", tool_call_id)
                     messages.append({
@@ -224,3 +222,25 @@ class NLUOrchestrator:
 def _accumulate(total: dict[str, int], delta: dict[str, int]) -> None:
     for key, value in delta.items():
         total[key] = total.get(key, 0) + value
+
+
+def _append_assistant_message(messages: list[dict[str, Any]], raw: Any) -> dict[str, Any]:
+    """Chuẩn hoá & append 1 lượt assistant, dùng chung cho nhánh clarification
+    (không tool call) và nhánh repair-loop (tool call lỗi).
+
+    `raw` (=`parsed.raw_assistant_content`) ĐÃ LÀ một dict {role, content,
+    tool_calls} hoàn chỉnh cho mọi provider hiện có (mọi subclass
+    OpenAICompatibleLLMClient — xem app/llm/openai_compatible.py,
+    `raw_assistant_content=message`). KHÔNG được bọc thêm 1 lớp
+    {"role": "assistant", "content": raw} — double-nesting biến `content`
+    thành dict thay vì str/None, gây HTTP 400 ở lượt gọi kế tiếp nếu
+    `messages` này được dùng làm `history` cho 1 lượt `interpret()` sau.
+    """
+    if isinstance(raw, dict):
+        assistant_msg = dict(raw)
+        if assistant_msg.get("content") is None:
+            assistant_msg["content"] = ""
+    else:
+        assistant_msg = {"role": "assistant", "content": raw or ""}
+    messages.append(assistant_msg)
+    return assistant_msg
