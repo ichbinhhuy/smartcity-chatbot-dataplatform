@@ -83,7 +83,10 @@ class OpenAICompatibleLLMClient:
             "messages": formatted_messages,
             "tools": formatted_tools,
             "tool_choice": "auto",
-            "temperature": 0.1,
+            # 0 (không phải 0.1) để giảm dao động giữa các lần gọi cùng 1 câu hỏi
+            # mơ hồ — model chọn "gọi tool" hay "hỏi lại clarification" cần nhất
+            # quán nhất có thể, không phải chỗ cần sáng tạo.
+            "temperature": 0,
         }
 
         try:
