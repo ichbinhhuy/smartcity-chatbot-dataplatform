@@ -36,6 +36,7 @@ services:
       - NIFI_JVM_HEAP_MAX=1g
     volumes:
       - ./landing_zone:/opt/nifi/nifi-current/landing_zone
+      - ./flow.json.gz:/opt/nifi/nifi-current/conf/flow.json.gz
       - nifi_conf:/opt/nifi/nifi-current/conf
     restart: unless-stopped
     mem_limit: 1.5g
