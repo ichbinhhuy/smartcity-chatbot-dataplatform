@@ -378,6 +378,20 @@ def api_lineage_graph():
                 "color": "#3B82F6",
                 "nodes": [
                     {
+                        "id": "dim_sections",
+                        "name": "dim_sections",
+                        "type": "Static Dimension Table",
+                        "db": "starrocks_gold",
+                        "columns": [
+                            {"name": "section_id", "type": "VARCHAR(50)", "constraint": "PRIMARY KEY / NOT NULL", "desc": "Mã phân đoạn đường / khu vực"},
+                            {"name": "section_name", "type": "VARCHAR(100)", "constraint": "NOT NULL", "desc": "Tên chuẩn hóa khu vực (Cổng chính TTTM, Khu Căn hộ, Khu Biệt thự)"},
+                            {"name": "max_speed_limit", "type": "INT", "constraint": "NOT NULL", "desc": "Tốc độ tối đa cho phép (km/h)"},
+                            {"name": "total_parking_slots", "type": "INT", "constraint": "NOT NULL", "desc": "Tổng số chỗ đỗ xe thiết kế"},
+                            {"name": "created_at", "type": "DATETIME", "constraint": "DEFAULT CURRENT_TIMESTAMP", "desc": "Thời điểm tạo bản ghi danh mục"}
+                        ],
+                        "rules": ["Bảng chiều danh mục tĩnh (Master Data) dùng để JOIN ngữ cảnh khu vực cho tất cả các bảng Fact trong Gold Data Mart"]
+                    },
+                    {
                         "id": "fact_environment",
                         "name": "fact_environment",
                         "type": "Fact Table (OLAP)",
