@@ -302,12 +302,18 @@ class CatalogRetriever:
                     selected_dimensions.add(d.name)
 
         max_cosine = float(dense_list[0][0]) if dense_list else 0.0
-        # Rào cản cosine chỉ có ý nghĩa với embedding thật — hash-trick vector
-        # (fallback khi không tải được SentenceTransformer/FastEmbed) không
-        # mang ngữ nghĩa semantic nên không dùng để đánh giá out-of-domain.
-        is_out_of_domain = (
-            max_cosine < self.cosine_threshold if self.embedding_engine.backend != "hash" else False
-        )
+        # TẠM THỜI TẮT LẠI (2026-08-13): test tay trên UI thật (embedding thật,
+        # không phải hash-fallback) phát hiện false positive — câu hỏi rất cụ
+        # thể, đúng domain traffic_flow ("Số lần vượt tốc độ và tốc độ trung
+        # bình ở khu TTTM từ ngày 21-27/7...") vẫn bị chặn nhầm vì
+        # cosine_threshold=0.3 chưa được calibrate bằng eval set thật (macro
+        # document dạng "keyword soup" của từng cube có thể khiến cosine
+        # tuyệt đối với câu hỏi tự nhiên thấp hơn 0.3 dù RRF vẫn xếp hạng đúng
+        # cube). Xem docs/04-ambiguous-question-handling.md case E.
+        # is_out_of_domain = (
+        #     max_cosine < self.cosine_threshold if self.embedding_engine.backend != "hash" else False
+        # )
+        is_out_of_domain = False
 
         return {
             "measures": sorted(selected_measures),
@@ -338,11 +344,11 @@ class CatalogRetriever:
         dense_rank_map = {doc["field_name"]: rank + 1 for rank, (_, doc) in enumerate(dense_list)}
 
         max_cosine = float(dense_list[0][0]) if dense_list else 0.0
-        # Rào cản cosine chỉ có ý nghĩa với embedding thật — xem ghi chú tương
-        # ứng trong _retrieve_cube_first().
-        is_out_of_domain = (
-            max_cosine < self.cosine_threshold if self.embedding_engine.backend != "hash" else False
-        )
+        # TẠM THỜI TẮT LẠI — xem ghi chú tương ứng trong _retrieve_cube_first().
+        # is_out_of_domain = (
+        #     max_cosine < self.cosine_threshold if self.embedding_engine.backend != "hash" else False
+        # )
+        is_out_of_domain = False
 
         rrf_scores = []
         for doc in self.column_documents:

@@ -11,6 +11,7 @@ backend nào thực sự load được lúc CatalogRetriever() khởi tạo.
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from app.retrieval.retriever import CatalogRetriever
 
@@ -21,6 +22,19 @@ class TestOutOfDomainGuardrail:
         luôn tắt cho backend này, kể cả khi threshold rất cao."""
         retriever = CatalogRetriever(catalog, cosine_threshold=0.99)
         monkeypatch.setattr(retriever.embedding_engine, "backend", "hash")
+
+        result = retriever.retrieve("một câu hỏi bất kỳ")
+
+        assert result["is_out_of_domain"] is False
+
+    def test_disabled_even_for_non_hash_backend(self, catalog, monkeypatch):
+        """TẠM THỜI TẮT LẠI (2026-08-13, xem retriever.py) — test tay trên UI
+        thật (embedding thật) phát hiện false positive: câu hỏi rất cụ thể,
+        đúng domain traffic_flow vẫn bị chặn nhầm vì cosine_threshold=0.3
+        chưa được calibrate bằng eval set thật. `is_out_of_domain` giờ luôn
+        `False` bất kể backend/threshold, cho tới khi được bật lại."""
+        retriever = CatalogRetriever(catalog, cosine_threshold=0.99)
+        self._patch_non_hash_zero_cosine(retriever, monkeypatch)
 
         result = retriever.retrieve("một câu hỏi bất kỳ")
 
@@ -37,6 +51,11 @@ class TestOutOfDomainGuardrail:
         zero_vec = np.zeros(dim, dtype=np.float32)
         monkeypatch.setattr(retriever.embedding_engine, "encode_single", lambda text: zero_vec)
 
+    @pytest.mark.skip(
+        reason="OOD guardrail tạm tắt (retriever.py, 2026-08-13) do false "
+        "positive phát hiện qua UI thật — bật lại cùng lúc với logic threshold "
+        "trong retriever.py sau khi calibrate ngưỡng bằng dữ liệu thật."
+    )
     def test_triggers_for_non_hash_backend_below_threshold(self, catalog, monkeypatch):
         retriever = CatalogRetriever(catalog, cosine_threshold=0.99)
         self._patch_non_hash_zero_cosine(retriever, monkeypatch)
@@ -46,6 +65,10 @@ class TestOutOfDomainGuardrail:
         # cosine = 0.0 (vector rỗng) < threshold 0.99.
         assert result["is_out_of_domain"] is True
 
+    @pytest.mark.skip(
+        reason="OOD guardrail tạm tắt (retriever.py, 2026-08-13) — xem lý do ở "
+        "test_triggers_for_non_hash_backend_below_threshold."
+    )
     def test_not_triggered_when_threshold_is_zero(self, catalog, monkeypatch):
         retriever = CatalogRetriever(catalog, cosine_threshold=0.0)
         self._patch_non_hash_zero_cosine(retriever, monkeypatch)

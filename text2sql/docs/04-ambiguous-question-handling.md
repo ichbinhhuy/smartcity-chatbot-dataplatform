@@ -23,13 +23,13 @@
 | B | Model tự thấy không đủ tin cậy để gọi tool | ✅ | `orchestrator.py` nhánh `not parsed.has_tool_call` |
 | C | Cross-domain / nhắc nhiều cube cùng lúc | 🟡 | Rule 2 ép cùng-cube, nhưng không ép hỏi lại |
 | D | Top-2 cube RAG gần điểm nhau | ✅ | Rule 12 + `build_clarification_suggestions()` |
-| E | Ngoài phạm vi domain (out-of-domain) | ✅ | Guardrail cosine đã bật lại (`retriever.py`/`orchestrator.py`) |
+| E | Ngoài phạm vi domain (out-of-domain) | 🟡 | Implement rồi nhưng TẠM TẮT — false positive thật phát hiện qua UI, chờ calibrate |
 | F | RAG recall miss / RRF score thấp | ✅ | `top_k_cubes` 2→3, configurable qua `RAG_TOP_K_CUBES` (FIX-09) |
 | G | Giá trị filter mơ hồ (entity resolution) | ✅ | `sample_values.py` phát hiện candidate gần điểm nhau → error (FIX-04) |
 | H | Follow-up ngắn dựa vào lịch sử hội thoại | ✅ | Session store Redis/InMemory + fixed message shape |
 | I | Vòng lặp clarification không điểm dừng | ✅ | `max_clarification_streak` + `_apply_clarification_cap()` |
 | J | Refusal (safety) bị nhầm với clarification | ✅ | `parsed.is_refusal` check trước, tách status riêng |
-| K | Input rỗng / whitespace / ký tự đặc biệt | 🟡 | Cải thiện nhờ OOD guardrail (E), vẫn hên xui với backend "hash" |
+| K | Input rỗng / whitespace / ký tự đặc biệt | ❓ | Bị chặn "hên xui" qua Rule 13 — OOD guardrail (E) đang tạm tắt |
 | L | Mốc thời gian mơ hồ (vd "gần đây") | ✅ | Default `last 30 days`, không cần hỏi lại |
 
 ✅ đã xử lý · 🟡 một phần · ❌ chưa xử lý · ❓ hên xui, chưa có cơ chế minh bạch
@@ -82,19 +82,32 @@ nên luôn nhất quán) làm quick-reply chip cho FE.
 
 Ví dụ: *"Hôm nay thời tiết thế nào"*, *"Giá vàng bao nhiêu"*.
 
-✅ **Đã xử lý.** `is_out_of_domain` (`retriever.py`, cả 2 nhánh retrieval)
-tính thật: `max_cosine < cosine_threshold` khi backend embedding không phải
-`"hash"` (hash-trick vector không mang ngữ nghĩa semantic nên không dùng để
-đánh giá). `orchestrator.py` nhánh `if is_ood:` trả `NLUStatus.CLARIFICATION`
-kèm message hướng dẫn + `suggestions` liệt kê toàn bộ tên cube đang hỗ trợ,
-và append đúng lượt assistant vào `messages` (dùng chung
-`_append_assistant_message()`) để history nhất quán cho lượt sau. Ngưỡng
-`cosine_threshold` (mặc định `0.3`, qua `COSINE_THRESHOLD`) giữ nguyên —
-**chưa được calibrate bằng eval set thật** (cần bộ câu hỏi trong/ngoài-domain
-để đo phân bố cosine score thật, tránh false-positive chặn nhầm câu hỏi hợp
-lệ dùng từ vựng khác thường). Có test:
+🟡 **Implement rồi nhưng TẠM THỜI TẮT LẠI (2026-08-13).** `is_out_of_domain`
+(`retriever.py`, cả 2 nhánh retrieval) có logic tính thật:
+`max_cosine < cosine_threshold` khi backend embedding không phải `"hash"`
+(hash-trick vector không mang ngữ nghĩa semantic nên không dùng để đánh
+giá), và `orchestrator.py` nhánh `if is_ood:` (vẫn còn nguyên, không xoá)
+trả `NLUStatus.CLARIFICATION` kèm message hướng dẫn + `suggestions` liệt kê
+toàn bộ tên cube đang hỗ trợ. **Nhưng** ngay khi test tay trên UI thật
+(embedding thật, không phải hash-fallback trong sandbox), phát hiện
+**false positive thật**: câu hỏi rất cụ thể, đúng domain `traffic_flow`
+(*"Số lần vượt tốc độ và tốc độ trung bình ở khu TTTM từ ngày 21-27/7 hôm
+qua là bao nhiêu?"*) vẫn bị chặn nhầm — `cosine_threshold=0.3` chưa được
+calibrate bằng eval set thật, và macro-document dạng "keyword soup" của mỗi
+cube (tên field + mô tả nối chuỗi) có thể khiến cosine tuyệt đối với câu hỏi
+tự nhiên thấp hơn 0.3 dù RRF (rank-based) vẫn xếp hạng đúng cube.
+
+→ Đã revert `is_out_of_domain` về hardcode `False` ở cả 2 nhánh retrieval
+(logic thật giữ nguyên dạng comment, dễ bật lại), test tương ứng
+(`test_triggers_for_non_hash_backend_below_threshold`,
+`test_not_triggered_when_threshold_is_zero` trong `tests/test_retriever.py`)
+đánh dấu `@pytest.mark.skip` kèm lý do. **Cần** bộ câu hỏi eval trong/ngoài
+domain + đo phân bố `max_cosine_score` thật (qua Langfuse hoặc script riêng)
+trước khi bật lại — không đoán ngưỡng mới khi chưa có dữ liệu. Có test:
 `test_out_of_domain_question_triggers_clarification_without_calling_llm`
-(`tests/test_orchestrator.py`), `TestOutOfDomainGuardrail`
+(`tests/test_orchestrator.py`, dùng fake retriever nên không phụ thuộc trạng
+thái bật/tắt ở trên — vẫn xác nhận đúng orchestrator xử lý `is_ood=True`
+nếu retriever báo về), `TestOutOfDomainGuardrail`
 (`tests/test_retriever.py`).
 
 ### F. RAG recall miss / RRF score thấp khiến catalog bị cắt hẹp sai
@@ -182,13 +195,13 @@ hoàn toàn khỏi `NLUStatus.CLARIFICATION` cả về status lẫn message. Có
 
 ### K. Input rỗng / whitespace / chỉ ký tự đặc biệt
 
-🟡 **Cải thiện một phần nhờ case E.** `_tokenize()` (`retriever.py`) trả về
+❓ **Vẫn hên xui — chưa cải thiện.** `_tokenize()` (`retriever.py`) trả về
 set rỗng cho input rỗng/toàn ký tự đặc biệt; BM25 score có bảo vệ chia 0
-(`len(q_tokens) or 1.0`). Từ khi OOD guardrail (case E) được bật lại, cosine
-similarity thấp bất thường của input rỗng/nhiễu (với backend embedding thật)
-sẽ bị bắt qua nhánh `is_ood`, không còn phụ thuộc hoàn toàn vào việc Rule 13
-"vô tình" chặn được. Vẫn còn hên xui với backend `"hash"` (guardrail luôn
-tắt) — chưa có test riêng cho input rỗng cụ thể.
+(`len(q_tokens) or 1.0`). OOD guardrail (case E) từng được bật lại nhưng đã
+**tạm tắt** do false positive thật (xem case E) — nên input rỗng/nhiễu vẫn
+"vô tình" phụ thuộc vào việc Rule 13 chặn được, không có cơ chế minh bạch
+qua ngưỡng cosine như dự tính ban đầu. Sẽ tự động cải thiện khi case E được
+bật lại sau khi calibrate.
 
 ### L. Mốc thời gian mơ hồ (vd "gần đây", không nêu thời gian)
 
@@ -214,7 +227,7 @@ thời gian) — không cần xử lý thêm.
   [`tests/test_validator.py`](../tests/test_validator.py),
   [`tests/test_session_store.py`](../tests/test_session_store.py),
   [`tests/test_server.py`](../tests/test_server.py) — test cho các case đã
-  xử lý (A, B, E, F, G, H, I, J).
+  xử lý (A, B, F, G, H, I, J) + case E (skip 2 test threshold, xem case E).
 
 ## 4. Việc chưa làm (ngoài phạm vi implement lần này)
 
