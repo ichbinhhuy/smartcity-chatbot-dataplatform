@@ -27,7 +27,7 @@ from app.retrieval.retriever import CatalogRetriever
 from app.session.factory import get_session_store
 import app.tracing as tracing
 
-app = FastAPI(title="SmartCity AI Platform", version="1.0.0")
+app = FastAPI(title="Data Platform", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -781,6 +781,6 @@ def index():
     html_path = WEB_DIR / "index.html"
     if html_path.exists():
         return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
-    return HTMLResponse(content="<h1>SmartCity AI Platform Web UI</h1><p>Web UI index.html not found.</p>")
+    return HTMLResponse(content="<h1>Data Platform Web UI</h1><p>Web UI index.html not found.</p>")
 
 
