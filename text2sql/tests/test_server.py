@@ -87,6 +87,41 @@ def test_clarification_then_followup_reuses_session_id(client, monkeypatch):
     assert body2["query"]["measures"] == ["traffic_flow.avg_speed"]
 
 
+def test_repeated_clarification_escalates_to_full_catalog_listing(client, monkeypatch):
+    """Sau `settings.max_clarification_streak` (mặc định 2) lượt CLARIFICATION
+    liên tiếp cùng 1 session, hệ thống phải đổi chiến lược — liệt kê toàn bộ
+    danh mục thay vì tiếp tục hỏi trắc nghiệm hẹp. Xem app/server.py
+    `_apply_clarification_cap` và docs/04-ambiguous-question-handling.md case I."""
+    fake_llm = FakeLLMClient(
+        [
+            text_response("Bạn muốn xem chỉ số nào: điện hay giao thông?"),
+            text_response("Vẫn chưa rõ, bạn muốn xem gì cụ thể?"),
+            text_response("Mình chưa hiểu, bạn có thể nói rõ hơn không?"),
+        ]
+    )
+    _set_llm(monkeypatch, fake_llm)
+
+    session_id = None
+    bodies = []
+    for _ in range(3):
+        payload = {"question": "cho tôi xem số liệu"}
+        if session_id:
+            payload["session_id"] = session_id
+        res = client.post("/api/chat", json=payload)
+        body = res.json()
+        bodies.append(body)
+        session_id = body["session_id"]
+
+    assert [b["status"] for b in bodies] == ["clarification"] * 3
+    # 2 lượt đầu vẫn là message gốc từ LLM (chưa vượt streak).
+    assert bodies[0]["answer"] == "Bạn muốn xem chỉ số nào: điện hay giao thông?"
+    assert bodies[1]["answer"] == "Vẫn chưa rõ, bạn muốn xem gì cụ thể?"
+    # Lượt thứ 3 vượt max_clarification_streak -> bị escalate, không còn là
+    # message gốc từ LLM nữa, và suggestions liệt kê toàn bộ cube.
+    assert bodies[2]["answer"] != "Mình chưa hiểu, bạn có thể nói rõ hơn không?"
+    assert bodies[2]["suggestions"]
+
+
 def test_unknown_session_id_starts_fresh_history(client, monkeypatch):
     fake_llm = FakeLLMClient([tool_call_response({"measures": ["traffic_flow.avg_speed"]})])
     _set_llm(monkeypatch, fake_llm)

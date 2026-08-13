@@ -130,14 +130,29 @@ class QueryValidator:
                 )
                 continue
             valid_filters.append(f)
-            self._resolve_filter_values(f, notes)
+            self._resolve_filter_values(f, errors, notes)
         query.filters = valid_filters
 
-    def _resolve_filter_values(self, f: Any, notes: list[str]) -> None:
-        """Đối chiếu giá trị filter với Alias Map hoặc sample_values.yaml."""
+    def _resolve_filter_values(self, f: Any, errors: list[str], notes: list[str]) -> None:
+        """Đối chiếu giá trị filter với Alias Map hoặc sample_values.yaml.
+
+        Nếu `resolve()` báo giá trị mơ hồ (≥2 candidate gần giống nhau,
+        không đủ tin cậy để tự đoán) -> đẩy thành lỗi validation, chảy vào
+        repair loop có sẵn ở orchestrator.py (model được yêu cầu gọi lại tool
+        với tham số đã sửa) thay vì âm thầm chọn 1 giá trị có thể sai. Xem
+        docs/04-ambiguous-question-handling.md case G / FIX-04.
+        """
         resolved: list[str] = []
         for value in f.values:
-            new_value, changed = self.sample_values.resolve(f.member, value)
+            new_value, changed, ambiguous = self.sample_values.resolve(f.member, value)
+            if ambiguous:
+                errors.append(
+                    f"Giá trị '{value}' của '{f.member}' khớp nhiều giá trị gần giống nhau "
+                    f"({', '.join(ambiguous)}) — không đủ tin cậy để tự chọn. "
+                    "Hãy nêu rõ giá trị bạn muốn lọc."
+                )
+                resolved.append(value)
+                continue
             if changed:
                 notes.append(f"Đã hiểu giá trị '{value}' của '{f.member}' là '{new_value}'.")
             resolved.append(new_value)

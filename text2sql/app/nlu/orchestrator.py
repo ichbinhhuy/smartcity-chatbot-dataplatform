@@ -65,18 +65,20 @@ class NLUOrchestrator:
             "is_out_of_domain": is_ood,
         })
 
-        # 1.5. Check Cosine Similarity Out-of-Domain Guardrail (< 0.3 -> Trả văn mẫu) - TẠM THỜI GỠ BỎ
-        # if is_ood:
-        #     out_of_domain_msg = (
-        #         "Câu hỏi không liên quan hoặc nằm ngoài phạm vi dữ liệu hỗ trợ của hệ thống Đô thị Thông minh. "
-        #         "Vui lòng thử lại với các câu hỏi liên quan đến chỉ số đáng sống, chất lượng không khí, giao thông, bãi đỗ xe, chiếu sáng hoặc sự cố đường phố."
-        #     )
-        #     return NLUResult(
-        #         status=NLUStatus.CLARIFICATION,
-        #         message=out_of_domain_msg,
-        #         errors=[f"Out of domain query: Max Cosine score ({max_cosine:.4f}) < threshold ({self.retriever.cosine_threshold})"],
-        #         messages=messages,
-        #     )
+        # 1.5. Check Cosine Similarity Out-of-Domain Guardrail (< threshold -> Trả văn mẫu)
+        if is_ood:
+            out_of_domain_msg = (
+                "Câu hỏi không liên quan hoặc nằm ngoài phạm vi dữ liệu hỗ trợ của hệ thống Đô thị Thông minh. "
+                "Vui lòng thử lại với các câu hỏi liên quan đến chỉ số đáng sống, chất lượng không khí, giao thông, bãi đỗ xe, chiếu sáng hoặc sự cố đường phố."
+            )
+            _append_assistant_message(messages, {"role": "assistant", "content": out_of_domain_msg})
+            return NLUResult(
+                status=NLUStatus.CLARIFICATION,
+                message=out_of_domain_msg,
+                errors=[f"Out of domain query: Max Cosine score ({max_cosine:.4f}) < threshold ({self.retriever.cosine_threshold})"],
+                messages=messages,
+                suggestions=[c.title for c in self.catalog.cubes],
+            )
 
         # 2. Dynamic Tool Schema & System Prompt based on Top-K candidates
         system_prompt = build_system_prompt(self.catalog, candidates)

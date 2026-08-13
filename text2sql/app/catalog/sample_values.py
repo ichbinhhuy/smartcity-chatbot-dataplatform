@@ -12,6 +12,13 @@ from pathlib import Path
 
 import yaml
 
+# Chênh lệch ratio tối thiểu giữa candidate #1 và #2 của difflib fuzzy-match
+# để coi giá trị #1 là "đủ tin cậy". Dưới ngưỡng này -> 2 (hoặc nhiều) giá
+# trị gần giống nhau tới mức không nên tự đoán -> trigger clarification thay
+# vì silently chọn candidate đầu tiên. Xem docs/04-ambiguous-question-handling.md
+# case G / FIX-04.
+_AMBIGUITY_GAP = 0.05
+
 
 class SampleValues:
     def __init__(self, values: dict[str, list[str]]) -> None:
@@ -27,8 +34,15 @@ class SampleValues:
     def allowed(self, member: str) -> list[str] | None:
         return self._values.get(member)
 
-    def resolve(self, member: str, value: str) -> tuple[str, bool]:
-        """Trả về (giá trị đã quy đổi, có thay đổi hay không)."""
+    def resolve(self, member: str, value: str) -> tuple[str, bool, list[str] | None]:
+        """Trả về (giá trị đã quy đổi, có thay đổi hay không, candidates mơ hồ).
+
+        Phần tử thứ 3 khác `None` khi fuzzy-match tìm được ≥2 giá trị gần
+        giống nhau (chênh lệch ratio < `_AMBIGUITY_GAP`) — trường hợp đó
+        KHÔNG tự đoán (`value` trả về giữ nguyên bản gốc), để caller
+        (`QueryValidator._resolve_filter_values`) đẩy thành lỗi validation
+        và trigger repair loop/clarification thay vì âm thầm chọn sai.
+        """
         val_lower = value.strip().lower()
         alias_map = {
             # Phân khu (Section IDs) - Căn hộ (Section 1)
@@ -196,12 +210,26 @@ class SampleValues:
             "te": "POOR",
         }
         if val_lower in alias_map:
-            return alias_map[val_lower], True
+            return alias_map[val_lower], True, None
 
         allowed = self._values.get(member)
         if not allowed or value in allowed:
-            return value, False
-        match = difflib.get_close_matches(value.lower(), allowed, n=1, cutoff=0.6)
-        if match:
-            return match[0], True
-        return value, False
+            return value, False, None
+
+        # So khớp KHÔNG phân biệt hoa/thường — value LLM trả thường viết
+        # thường (vd "evening_full") trong khi DB lưu enum viết hoa (vd
+        # "EVENING_FULL"); so trực tiếp value.lower() với `allowed` gốc
+        # (không lower) làm ratio gần như luôn = 0 vì lệch case ở mọi ký tự.
+        lower_to_original = {a.lower(): a for a in allowed}
+        close = difflib.get_close_matches(val_lower, list(lower_to_original.keys()), n=3, cutoff=0.6)
+        if not close:
+            return value, False, None
+
+        if len(close) >= 2:
+            top_ratio = difflib.SequenceMatcher(None, val_lower, close[0]).ratio()
+            second_ratio = difflib.SequenceMatcher(None, val_lower, close[1]).ratio()
+            if (top_ratio - second_ratio) < _AMBIGUITY_GAP:
+                candidates = [lower_to_original[c] for c in close]
+                return value, False, candidates
+
+        return lower_to_original[close[0]], True, None

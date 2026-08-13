@@ -7,6 +7,7 @@ docs/02-cube-architecture.md mục 2.
 
 from __future__ import annotations
 
+from app.catalog.sample_values import SampleValues
 from app.nlu.validator import QueryValidator
 
 
@@ -104,6 +105,8 @@ def test_clamps_limit_to_guardrail(catalog, sample_values, settings):
 
 
 def test_fuzzy_matches_filter_value(catalog, sample_values, settings):
+    """Fuzzy-match phải không phân biệt hoa/thường — DB lưu enum viết hoa
+    (EVENING_FULL) trong khi LLM có thể trả giá trị viết thường."""
     result = _validator(catalog, sample_values, settings).validate(
         {
             "measures": ["smart_lighting.total_power_kwh"],
@@ -112,3 +115,24 @@ def test_fuzzy_matches_filter_value(catalog, sample_values, settings):
     )
     assert result.ok, result.errors
     assert result.query.filters[0].values == ["EVENING_FULL"]
+
+
+def test_ambiguous_filter_value_is_rejected(catalog, settings):
+    """Khi ≥2 giá trị allowed gần giống nhau tới mức không đủ tin cậy để tự
+    đoán, validator phải trả lỗi (đẩy vào repair loop) thay vì âm thầm chọn
+    candidate đầu tiên — xem docs/04-ambiguous-question-handling.md case G."""
+    ambiguous_sample_values = SampleValues(
+        {"smart_lighting.operating_mode": ["EVENING_FULL_ZONE_A", "EVENING_FULL_ZONE_B"]}
+    )
+    result = _validator(catalog, ambiguous_sample_values, settings).validate(
+        {
+            "measures": ["smart_lighting.total_power_kwh"],
+            "filters": [
+                {"member": "smart_lighting.operating_mode", "operator": "equals", "values": ["evening_full_zone"]}
+            ],
+        }
+    )
+    assert not result.ok
+    assert any(
+        "EVENING_FULL_ZONE_A" in e and "EVENING_FULL_ZONE_B" in e for e in result.errors
+    ), result.errors

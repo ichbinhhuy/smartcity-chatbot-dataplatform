@@ -498,6 +498,35 @@ def _truncate_history(messages: list[dict[str, Any]], max_messages: int) -> list
     return trimmed
 
 
+def _apply_clarification_cap(session_id: str, nlu_result, catalog: Catalog) -> None:
+    """Chặn vòng lặp clarification vô hạn: đếm số lượt CLARIFICATION liên
+    tiếp trong session; vượt `settings.max_clarification_streak` -> đổi
+    chiến lược, ghi đè `nlu_result` bằng danh mục đầy đủ thay vì tiếp tục
+    hỏi trắc nghiệm hẹp. Mutate `nlu_result` tại chỗ (pydantic model không
+    frozen) — phải gọi TRƯỚC khi response/payload được dựng từ nó.
+
+    QUERY/INVALID coi như đã thoát khỏi vòng hỏi lại -> reset streak. Cố ý
+    KHÔNG đụng streak khi ERROR/REFUSAL, nhất quán với `_SAVE_STATUSES`
+    (2 status đó không có lượt assistant tương ứng được lưu vào history).
+    """
+    store = get_session_store()
+    streak = store.get_clarification_streak(session_id)
+
+    if nlu_result.status == NLUStatus.CLARIFICATION:
+        streak += 1
+        if streak > settings.max_clarification_streak:
+            nlu_result.message = (
+                "Mình vẫn chưa xác định rõ được yêu cầu của bạn sau vài lần hỏi lại. "
+                "Đây là toàn bộ nhóm dữ liệu hệ thống đang hỗ trợ, bạn có thể chọn 1 trong các mục sau:"
+            )
+            nlu_result.suggestions = [c.title for c in catalog.cubes]
+            streak = 0  # đã escalate — tính lại từ đầu
+        store.set_clarification_streak(session_id, streak, ttl_seconds=settings.session_ttl_seconds)
+    elif nlu_result.status in (NLUStatus.QUERY, NLUStatus.INVALID):
+        store.set_clarification_streak(session_id, 0, ttl_seconds=settings.session_ttl_seconds)
+    # ERROR/REFUSAL: không chạm streak.
+
+
 def _persist_turn(session_id: str, nlu_result) -> None:
     """Lưu history sau lượt NLU — bỏ qua ERROR/REFUSAL vì NLUOrchestrator.interpret()
     không append lượt assistant tương ứng cho 2 status đó (xem app/nlu/orchestrator.py);
@@ -539,6 +568,7 @@ def api_chat(req: ChatRequest):
     )
 
     nlu_result = orchestrator.interpret(req.question, history=history, langfuse_trace=lf_trace)
+    _apply_clarification_cap(session_id, nlu_result, catalog)
     _persist_turn(session_id, nlu_result)
 
     if nlu_result.status == NLUStatus.CLARIFICATION:
@@ -658,6 +688,7 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
     def event_generator():
         session_id, history = _resolve_session(req.session_id)
         nlu_result = orchestrator.interpret(req.question, history=history, langfuse_trace=lf_trace)
+        _apply_clarification_cap(session_id, nlu_result, catalog)
         _persist_turn(session_id, nlu_result)
 
         if nlu_result.status == NLUStatus.CLARIFICATION:

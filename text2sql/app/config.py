@@ -81,6 +81,9 @@ class Settings:
     cosine_threshold: float = field(
         default_factory=lambda: float(os.getenv("COSINE_THRESHOLD", "0.3"))
     )
+    # Số cube Top-K RAG chọn ở Stage 1 (CUBE_FIRST) — xem app/retrieval/retriever.py.
+    # Tăng lên nếu recall miss (câu hỏi bị cắt hẹp nhầm ngoài top-K).
+    rag_top_k_cubes: int = field(default_factory=lambda: _env_int("RAG_TOP_K_CUBES", 3))
 
     # Session store cho multi-turn conversation (xem app/session/).
     # "memory" (mặc định — an toàn cho `python -m app.main` / test, không cần
@@ -94,6 +97,13 @@ class Settings:
     session_ttl_seconds: int = field(default_factory=lambda: _env_int("SESSION_TTL_SECONDS", 1800))
     # Giới hạn số message giữ lại mỗi lần lưu — tránh phình context (và cost LLM) vô hạn.
     max_history_messages: int = field(default_factory=lambda: _env_int("MAX_HISTORY_MESSAGES", 40))
+    # Số lượt CLARIFICATION liên tiếp tối đa trong 1 session trước khi hệ
+    # thống đổi chiến lược (liệt kê toàn bộ danh mục thay vì tiếp tục hỏi
+    # trắc nghiệm hẹp) — tránh vòng lặp hỏi lại vô hạn. Xem app/server.py
+    # `_apply_clarification_cap()`.
+    max_clarification_streak: int = field(
+        default_factory=lambda: _env_int("MAX_CLARIFICATION_STREAK", 2)
+    )
 
 
 settings = Settings()

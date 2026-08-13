@@ -51,6 +51,26 @@ class TestInMemorySessionStore:
         store = InMemorySessionStore()
         store.delete("khong-ton-tai")  # không raise
 
+    def test_clarification_streak_missing_session_returns_zero(self):
+        store = InMemorySessionStore()
+        assert store.get_clarification_streak("khong-ton-tai") == 0
+
+    def test_clarification_streak_roundtrip(self):
+        store = InMemorySessionStore()
+        store.set_clarification_streak("s1", 2)
+        assert store.get_clarification_streak("s1") == 2
+
+    def test_clarification_streak_negative_ttl_expires_immediately(self):
+        store = InMemorySessionStore()
+        store.set_clarification_streak("s1", 2, ttl_seconds=-1)
+        assert store.get_clarification_streak("s1") == 0
+
+    def test_delete_also_clears_clarification_streak(self):
+        store = InMemorySessionStore()
+        store.set_clarification_streak("s1", 2)
+        store.delete("s1")
+        assert store.get_clarification_streak("s1") == 0
+
 
 class TestRedisSessionStore:
     @pytest.fixture
@@ -110,3 +130,34 @@ class TestRedisSessionStore:
     def test_get_degrades_to_empty_on_corrupt_payload(self, store, fake_client):
         fake_client.set(store._key("s1"), "khong-phai-json{{{")
         assert store.get("s1") == []
+
+    def test_clarification_streak_missing_session_returns_zero(self, store):
+        assert store.get_clarification_streak("khong-ton-tai") == 0
+
+    def test_clarification_streak_roundtrip(self, store):
+        store.set_clarification_streak("s1", 2)
+        assert store.get_clarification_streak("s1") == 2
+
+    def test_clarification_streak_sets_ttl(self, store, fake_client):
+        store.set_clarification_streak("s1", 1, ttl_seconds=120)
+        ttl = fake_client.ttl(store._streak_key("s1"))
+        assert 0 < ttl <= 120
+
+    def test_delete_also_clears_clarification_streak(self, store):
+        store.set_clarification_streak("s1", 2)
+        store.delete("s1")
+        assert store.get_clarification_streak("s1") == 0
+
+    def test_clarification_streak_degrades_to_zero_on_redis_error(self, store, monkeypatch):
+        def _raise(*a, **kw):
+            raise redis_lib.exceptions.ConnectionError("boom")
+
+        monkeypatch.setattr(store._client, "get", _raise)
+        assert store.get_clarification_streak("s1") == 0  # không raise
+
+    def test_set_clarification_streak_degrades_to_noop_on_redis_error(self, store, monkeypatch):
+        def _raise(*a, **kw):
+            raise redis_lib.exceptions.ConnectionError("boom")
+
+        monkeypatch.setattr(store._client, "setex", _raise)
+        store.set_clarification_streak("s1", 1)  # không raise

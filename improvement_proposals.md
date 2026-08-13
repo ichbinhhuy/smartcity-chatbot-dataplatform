@@ -2,6 +2,10 @@
 
 > Tổng hợp từ: Phân tích source code thực tế + Peer review từ LLM bên ngoài.
 > Ngày: 2026-08-10
+>
+> Xem thêm [`text2sql/docs/04-ambiguous-question-handling.md`](text2sql/docs/04-ambiguous-question-handling.md)
+> cho phân tích đầy đủ các trường hợp câu hỏi ambiguous (bao gồm FIX-04,
+> FIX-09 ở đây, đặt trong bối cảnh toàn bộ pipeline clarification).
 
 ---
 
