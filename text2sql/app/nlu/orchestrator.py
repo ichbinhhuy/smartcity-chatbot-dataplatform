@@ -94,7 +94,7 @@ class NLUOrchestrator:
                 langfuse_trace,
                 name=f"nlu_llm_attempt_{attempt + 1}",
                 model=getattr(self.llm, "nlu_model", ""),
-                input={"system": system_prompt[:500] + "...", "messages": messages},
+                input={"system": system_prompt[:500] + "...", "messages": messages, "tools": tools},
                 metadata={"attempt": attempt + 1, "top_cubes": candidates.get("cubes", [])},
             )
             try:
@@ -110,12 +110,16 @@ class NLUOrchestrator:
                 )
 
             _accumulate(usage_total, response.usage)
+            parsed = parse_response(response)
             nlu_gen.end(
-                output={"usage": response.usage},
+                output={
+                    "tool_call": parsed.tool_input if parsed.has_tool_call else None,
+                    "text": parsed.text,
+                    "usage": response.usage,
+                },
                 usage={"input": response.usage.get("prompt_tokens", 0),
                        "output": response.usage.get("completion_tokens", 0)},
             )
-            parsed = parse_response(response)
 
             if parsed.is_refusal:
                 return NLUResult(

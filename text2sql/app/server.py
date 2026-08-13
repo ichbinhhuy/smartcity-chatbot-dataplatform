@@ -1,4 +1,4 @@
-"""FastAPI Server cho SmartCity AI & BI Platform Web UI."""
+"""FastAPI Server cho SmartCity Data Platform Web UI."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from app.retrieval.retriever import CatalogRetriever
 from app.session.factory import get_session_store
 import app.tracing as tracing
 
-app = FastAPI(title="Data Platform", version="1.0.0")
+app = FastAPI(title="SmartCity Data Platform", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -624,9 +624,9 @@ Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả
 2. **Không dùng bảng markdown** (để tránh lỗi dính dòng trên giao diện). Hãy trình bày thông tin dưới dạng danh sách gạch đầu dòng rõ ràng, phân cấp mạch lạc và có xuống dòng đầy đủ.
 3. **Cấu trúc báo cáo**:
    - **Tóm tắt tổng quan**: 1 câu trả lời trực tiếp nội dung chính.
-   - **Số liệu chi tiết**: Trình bày từng khu vực/hạng mục theo danh sách gạch đầu dòng, các chỉ số quan trọng được in đậm.
-   - **Nhận xét chính**: 1 câu đánh giá tổng kết về điểm cao nhất, thấp nhất hoặc xu hướng chính.
+   - **Số liệu chi tiết**: CHỈ trình bày số liệu của đúng khu vực/đối tượng được hỏi trong câu hỏi. TUYỆT ĐỐI KHÔNG tự ý thêm dữ liệu của các khu vực/đối tượng khác không được đề cập.
 4. **Định dạng số**: Làm tròn các con số thập phân đến 2 chữ số (ví dụ: 65.63, 63.90).
+5. **TUYỆT ĐỐI KHÔNG nhận xét cảm tính**: Không được đưa ra bất kỳ đánh giá chủ quan nào (như 'khá tốt', 'tương đối cao', 'đáng lo ngại'). Chỉ báo cáo số liệu thuần túy từ JSON. Nếu không có bảng tiêu chuẩn ngưỡng nào được cung cấp trong yêu cầu, BỎ HOÀN TOÀN phần nhận xét.
 """
     nlg_messages = [
         {"role": "user", "content": f"Câu hỏi: {req.question}\nKết quả JSON từ Cube:\n{json.dumps(cube_data, ensure_ascii=False)}"}
@@ -760,9 +760,9 @@ Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả
 2. **Không dùng bảng markdown** (để tránh lỗi dính dòng trên giao diện). Hãy trình bày thông tin dưới dạng danh sách gạch đầu dòng rõ ràng, phân cấp mạch lạc và có xuống dòng đầy đủ.
 3. **Cấu trúc báo cáo**:
    - **Tóm tắt tổng quan**: 1 câu trả lời trực tiếp nội dung chính.
-   - **Số liệu chi tiết**: Trình bày từng khu vực/hạng mục theo danh sách gạch đầu dòng, các chỉ số quan trọng được in đậm.
-   - **Nhận xét chính**: 1 câu đánh giá tổng kết về điểm cao nhất, thấp nhất hoặc xu hướng chính.
+   - **Số liệu chi tiết**: CHỈ trình bày số liệu của đúng khu vực/đối tượng được hỏi trong câu hỏi. TUYỆT ĐỐI KHÔNG tự ý thêm dữ liệu của các khu vực/đối tượng khác không được đề cập.
 4. **Định dạng số**: Làm tròn các con số thập phân đến 2 chữ số (ví dụ: 65.63, 63.90).
+5. **TUYỆT ĐỐI KHÔNG nhận xét cảm tính**: Không được đưa ra bất kỳ đánh giá chủ quan nào (như 'khá tốt', 'tương đối cao', 'đáng lo ngại'). Chỉ báo cáo số liệu thuần túy từ JSON. Nếu không có bảng tiêu chuẩn ngưỡng nào được cung cấp trong yêu cầu, BỎ HOÀN TOÀN phần nhận xét.
 """
         nlg_messages = [
             {"role": "user", "content": f"Câu hỏi: {req.question}\nKết quả JSON từ Cube:\n{json.dumps(cube_data, ensure_ascii=False)}"}
@@ -812,6 +812,6 @@ def index():
     html_path = WEB_DIR / "index.html"
     if html_path.exists():
         return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
-    return HTMLResponse(content="<h1>Data Platform Web UI</h1><p>Web UI index.html not found.</p>")
+    return HTMLResponse(content="<h1>SmartCity Data Platform Web UI</h1><p>Web UI index.html not found.</p>")
 
 

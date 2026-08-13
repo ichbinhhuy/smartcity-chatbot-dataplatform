@@ -306,56 +306,145 @@ Nếu câu hỏi không nêu mốc thời gian, hệ thống sẽ mặc định 
 
 ---
 
-## 5. Tool Calling
+## 5. Cơ Chế GPT / OpenAI Tool Calling & Suy Luận Token Nội Bộ
 
-### Tool Schema gửi kèm
+### 5.1 HTTP Request Payload chuẩn OpenAI Chat Completions
+
+Backend gửi gói JSON POST theo đúng chuẩn OpenAI / GPT Function Calling API (`openai_compatible.py → generate()`):
 
 ```json
 {
-  "type": "function",
-  "function": {
-    "name": "query_metrics",
-    "description": "Truy vấn dữ liệu Smart City qua Cube. measures/dimensions phải lấy từ Catalog — không được bịa tên mới.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "measures":       { "type": "array", "description": "... Gợi ý: air_quality.avg_aqi, air_quality.avg_pm25, ..." },
-        "dimensions":     { "type": "array", "description": "... Gợi ý: air_quality.section_id, ..." },
-        "filters":        { "type": "array", "items": { "properties": { "member": {}, "operator": { "enum": ["equals","notEquals","contains","gt","gte","lt","lte","set","notSet"] }, "values": {} } } },
-        "timeDimensions": { "type": "array", "items": { "properties": { "dimension": { "description": "Một trong: air_quality.recorded_at, traffic_flow.recorded_at, ..." }, "dateRange": {}, "granularity": {} } } },
-        "order":          { "type": "array" },
-        "limit":          { "type": "integer", "minimum": 1, "maximum": 1000 }
-      },
-      "required": ["measures"]
+  "model": "llama-3.3-70b-versatile",
+  "temperature": 0.1,
+  "tool_choice": "auto",
+  "messages": [
+    {
+      "role": "system",
+      "content": "# Role: Trợ lý NLU...\n# Catalog Markdown (Top 2 Cubes)..."
+    },
+    {
+      "role": "user",
+      "content": "Chất lượng không khí AQI ở khu căn hộ ngày 26/7 thế nào?\n<runtime_context>Hôm nay là 2026-08-12</runtime_context>"
     }
-  }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "query_metrics",
+        "description": "Truy vấn dữ liệu Smart City qua Cube. measures/dimensions phải lấy từ Catalog — không được bịa tên mới.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "measures": {
+              "type": "array",
+              "description": "Các chỉ số cần tính. Gợi ý Top-K candidate: air_quality.avg_aqi, air_quality.avg_pm25, city_health_index.avg_livability_index",
+              "items": { "type": "string" }
+            },
+            "dimensions": {
+              "type": "array",
+              "description": "Các chiều để nhóm. Gợi ý Top-K candidate: air_quality.section_id, city_health_index.district_id",
+              "items": { "type": "string" }
+            },
+            "filters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "member": { "type": "string" },
+                  "operator": { "type": "string", "enum": ["equals","notEquals","contains","gt","gte","lt","lte","set","notSet"] },
+                  "values": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["member", "operator", "values"]
+              }
+            },
+            "timeDimensions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "dimension": { "type": "string", "description": "Cột thời gian, một trong: air_quality.recorded_at, city_health_index.date" },
+                  "dateRange": { "type": "string" },
+                  "granularity": { "type": "string" }
+                },
+                "required": ["dimension"]
+              }
+            },
+            "order": { "type": "array" },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 1000 }
+          },
+          "required": ["measures"]
+        }
+      }
+    }
+  ]
 }
 ```
 
-### LLM Response (Tool Call Arguments)
+### 5.2 Cơ chế Suy Luận Nội Bộ (4 Giai Đoạn Token Inference của GPT/LLM)
+
+Khi mô hình LLM (như GPT-4o / Llama 3.3) nhận được gói Payload trên, mạng nơ-ron thực thi suy luận theo 4 giai đoạn:
+
+```mermaid
+flowchart TD
+    A["Gói HTTP Payload đi vào LLM"] --> B["1. Nhận diện Ý định\n(Ý định = Truy vấn số liệu AQI)"]
+    B --> C["2. Constrained Sampling & Khóa miệng\n(Kích hoạt Tool query_metrics, ngắt sinh text tự do)"]
+    C --> D["3. Soi Candidates & Ánh xạ Cột\n('Chất lượng không khí AQI' -> air_quality.avg_aqi)"]
+    D --> E["4. Bóc tách Filter & TimeDimension\n('khu căn hộ' -> section_id = Khu căn hộ\n'ngày 26/7' -> dateRange = 2026-07-26)"]
+    E --> F["Sinh Token JSON Tool Call hoàn chỉnh"]
+```
+
+1. **Giai đoạn 1 — Nhận diện Ý định (Intent Recognition):** LLM phân tích câu hỏi người dùng và xác định đây là yêu cầu truy vấn dữ liệu đo lường.
+2. **Giai đoạn 2 — Constrained Sampling (Grammar Bias):** Vì có `tools` đi kèm và `tool_choice: "auto"`, hạ tầng GPT/LLM ép chuỗi sinh token phải tuân theo cấu trúc JSON Schema của `query_metrics`, ngắt hoàn toàn việc trả lời văn bản tự do (`content = null`).
+3. **Giai đoạn 3 — Soi Candidate & Ánh xạ Cột:** LLM đọc danh sách gợi ý trong `description` của `measures` (`air_quality.avg_aqi, air_quality.avg_pm25...`). LLM đối chiếu cụm từ *"chất lượng không khí AQI"* và tự chọn chính xác mã `"air_quality.avg_aqi"`.
+4. **Giai đoạn 4 — Bóc tách Filter & Thời gian:**
+   - Cụm từ *"ở khu căn hộ"* được trích xuất thành `filters`: `member = "air_quality.section_id"`, `operator = "equals"`, `values = ["Khu căn hộ"]`.
+   - Cụm từ *"ngày 26/7"* được trích xuất dựa theo `<runtime_context>` (năm 2026) thành `timeDimensions`: `dimension = "air_quality.recorded_at"`, `dateRange = "2026-07-26"`.
+
+### 5.3 HTTP Response Output chuẩn OpenAI (`finish_reason: "tool_calls"`)
 
 ```json
 {
-  "name": "query_metrics",
-  "arguments": {
-    "measures": ["air_quality.avg_aqi"],
-    "dimensions": ["air_quality.section_id"],
-    "filters": [
-      {
-        "member": "air_quality.section_id",
-        "operator": "equals",
-        "values": ["Khu căn hộ"]
+  "id": "chatcmpl-9x8y7z123",
+  "object": "chat.completion",
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_abc123xyz",
+            "type": "function",
+            "function": {
+              "name": "query_metrics",
+              "arguments": "{\"measures\":[\"air_quality.avg_aqi\"],\"dimensions\":[\"air_quality.section_id\"],\"filters\":[{\"member\":\"air_quality.section_id\",\"operator\":\"equals\",\"values\":[\"Khu căn hộ\"]}],\"timeDimensions\":[{\"dimension\":\"air_quality.recorded_at\",\"dateRange\":\"2026-07-26\"}]}"
+            }
+          }
+        ]
       }
-    ],
-    "timeDimensions": [
-      {
-        "dimension": "air_quality.recorded_at",
-        "dateRange": "2026-07-26"
-      }
-    ]
-  }
+    }
+  ]
 }
 ```
+
+### 5.4 Cơ chế Tự Động Nới Lỏng Schema (Relaxed Schema Fallback)
+
+Trong trường hợp API Gateway (như Groq) áp dụng quy tắc kiểm tra quá khắt khe đối với các enum lồng nhau làm trả về lỗi HTTP 400 (`tool call validation failed`), hàm `_relax_schema_enums()` trong [openai_compatible.py: L93-L100](file:///d:/AIVin/cube-smartcity/text2sql/app/llm/openai_compatible.py#L93-L100) sẽ tự động kích hoạt:
+
+```python
+except LLMError as exc:
+    err_str = str(exc).lower()
+    if any(k in err_str for k in ["tool call validation failed", "failed to call a function", "400"]):
+        # Tự động loại bỏ các ràng buộc enum/minItems/maximum trên Schema
+        relaxed_tools = json.loads(json.dumps(formatted_tools))
+        self._relax_schema_enums(relaxed_tools)
+        payload["tools"] = relaxed_tools
+        return self._call_api(payload) # Retry gọi API lần 2
+```
+
+> **Tác dụng:** Nới lỏng ràng buộc ở cấp độ Gateway API để LLM chắc chắn trả về Tool Call, sau đó nhường quyền kiểm tra tính hợp lệ của dữ liệu cho `QueryValidator` ở Bước 6 phía Python đảm nhiệm.
 
 ---
 
@@ -513,4 +602,172 @@ Tối đa `max_repair_attempts + 1 = 2` lần tổng.
 ║                → Cube Core REST API → SQL → StarRocks → Data       ║
 ║                                                                      ║
 ╚══════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
+## 9. Tiến Trình Chuyển Hóa Dữ Liệu Chi Tiết Theo 4 Cấp (4-Level Data Pipeline)
+
+> **Câu hỏi thử nghiệm minh họa:** *"Cho tôi biết tốc độ giao thông trung bình ở khu biệt thự ngày hôm nay thế nào?"*
+
+### Cấp 1: CATALOG GỐC TRONG RAM (`catalog` Object)
+*(Dữ liệu thô khởi động server nạp từ Cube API `/meta` lưu trên RAM)*
+
+```json
+{
+  "cubes": [
+    {
+      "name": "traffic_flow",
+      "title": "Traffic Flow (Giao thông)",
+      "measures": [
+        {"name": "traffic_flow.avg_speed", "title": "Tốc độ trung bình", "description": "Tốc độ km/h"},
+        {"name": "traffic_flow.avg_vehicle_count", "title": "Số lượng xe trung bình"},
+        {"name": "traffic_flow.congestion_rate", "title": "Tỷ lệ kẹt xe"}
+      ],
+      "dimensions": [
+        {"name": "traffic_flow.section_id", "title": "Mã đoạn đường"}
+      ],
+      "timeDimensions": [{"name": "traffic_flow.recorded_at"}]
+    },
+    {
+      "name": "street_incidents",
+      "title": "Street Incidents (Sự cố)",
+      "measures": [
+        {"name": "street_incidents.total_incidents", "title": "Tổng sự cố"}
+      ],
+      "dimensions": [
+        {"name": "street_incidents.incident_type", "title": "Loại sự cố"}
+      ],
+      "timeDimensions": [{"name": "street_incidents.timestamp_start"}]
+    }
+  ]
+}
+```
+
+### CẤP 2: RAG FIND OUTPUT (`candidates` Python Dict)
+*(RAG Vector Search chạy chế độ `CUBE_FIRST` → Lọc lấy Top 2 Cubes khớp nhất là `traffic_flow` và `street_incidents` → Gom 100% cột của 2 Cubes này)*
+
+```python
+candidates = {
+    "cubes": [
+        "traffic_flow", 
+        "street_incidents"
+    ],
+    "measures": [
+        "traffic_flow.avg_speed",
+        "traffic_flow.avg_vehicle_count",
+        "traffic_flow.congestion_rate",
+        "street_incidents.total_incidents"
+    ],
+    "dimensions": [
+        "traffic_flow.section_id",
+        "street_incidents.incident_type"
+    ],
+    "max_cosine_score": 0.8842
+}
+```
+
+### CẤP 3: NLU INPUT PACKAGING (Bộ dữ liệu tiêm sẵn chuẩn bị nạp cho LLM)
+*(Backend lấy `catalog` Cấp 1 + `candidates` Cấp 2 nhào nặn thành 2 biến gửi LLM)*
+
+#### 📄 Biến 1: `system_prompt` (Văn bản Markdown)
+```markdown
+# Role: Trợ lý NLU Smart City
+# Rules: 
+1. CHỈ sử dụng chỉ số trong Catalog bên dưới.
+2. Tất cả measures trong 1 lần gọi phải thuộc CÙNG 1 Cube...
+
+# Catalog (Chỉ gồm 2 Cubes được RAG lọc ở Cấp 2):
+## Cube `traffic_flow` (Giao thông):
+  * Measures:
+    - `traffic_flow.avg_speed` (Tốc độ trung bình)
+    - `traffic_flow.avg_vehicle_count` (Số lượng xe trung bình)
+    - `traffic_flow.congestion_rate` (Tỷ lệ kẹt xe)
+  * Dimensions:
+    - `traffic_flow.section_id` (Mã đoạn đường)
+
+## Cube `street_incidents` (Sự cố):
+  * Measures:
+    - `street_incidents.total_incidents` (Tổng sự cố)
+  * Dimensions:
+    - `street_incidents.incident_type` (Loại sự cố)
+```
+
+#### 📄 Biến 2: `tools` (Tool Schema `query_metrics` đã được tiêm dữ liệu)
+```json
+[
+  {
+    "name": "query_metrics",
+    "description": "Truy vấn dữ liệu Smart City...",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "measures": {
+          "type": "array",
+          "description": "Các chỉ số cần tính. Gợi ý Top-K candidate: traffic_flow.avg_speed, traffic_flow.avg_vehicle_count, traffic_flow.congestion_rate, street_incidents.total_incidents",
+          "items": {"type": "string"}
+        },
+        "dimensions": {
+          "type": "array",
+          "description": "Các chiều nhóm kết quả. Gợi ý Top-K candidate: traffic_flow.section_id, street_incidents.incident_type",
+          "items": {"type": "string"}
+        },
+        "timeDimensions": {
+          "type": "array",
+          "description": "Khoảng thời gian...",
+          "items": {
+            "properties": {
+              "dimension": {
+                "type": "string",
+                "description": "Cột thời gian, một trong: traffic_flow.recorded_at, street_incidents.timestamp_start"
+              }
+            }
+          }
+        }
+      },
+      "required": ["measures"]
+    }
+  }
+]
+```
+
+### CẤP 4: NLU LLM TOOL CALL OUTPUT (Kết quả do LLM sinh ra)
+*(LLM nhận 2 biến Cấp 3 + Câu hỏi khách → Tự soi 4 measures gợi ý → Chọn ra đúng `traffic_flow.avg_speed` điền vào Form)*
+
+```json
+{
+  "name": "query_metrics",
+  "input": {
+    "measures": [
+      "traffic_flow.avg_speed"
+    ],
+    "dimensions": [
+      "traffic_flow.section_id"
+    ],
+    "filters": [
+      {
+        "member": "traffic_flow.section_id",
+        "operator": "equals",
+        "values": ["Khu biet thu"]
+      }
+    ],
+    "timeDimensions": [
+      {
+        "dimension": "traffic_flow.recorded_at",
+        "dateRange": "today"
+      }
+    ]
+  }
+}
+```
+
+### 🔑 BẢNG TÓM TẮT CHUYỂN HÓA DỮ LIỆU
+
+| Giai đoạn | Dữ liệu chứa gì? | Thành phần xử lý |
+| :--- | :--- | :--- |
+| **Cấp 1 (Catalog)** | Toàn bộ 100% Cubes hệ thống (7-8 Cubes, ~40 cột). | RAM Server (`_catalog_cache`). |
+| **Cấp 2 (RAG Find)** | Thu hẹp còn **Top 2 Cubes**, gom **100% cột của 2 Cubes đó** (~10 cột ứng viên). | RAG Vector Search + BM25 (`_retrieve_cube_first`). |
+| **Cấp 3 (NLU Input)** | Bơm ~10 cột ứng viên này vào System Prompt & Tool Schema. | Code Python (`build_system_prompt` & `build_query_tool`). |
+| **Cấp 4 (LLM Output)** | Soi ~10 cột ứng viên → **Chọn đúng 1-2 cột chính xác nhất** điền vào Form JSON. | Mô hình LLM (Groq Llama 3.3 70B / OpenAI). |
+
 ```
