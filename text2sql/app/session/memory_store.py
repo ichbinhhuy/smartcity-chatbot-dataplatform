@@ -19,6 +19,7 @@ class InMemorySessionStore:
     def __init__(self, ttl_seconds: int = 1800) -> None:
         self._default_ttl = ttl_seconds
         self._data: dict[str, tuple[list[dict[str, Any]], float]] = {}
+        self._streaks: dict[str, tuple[int, float]] = {}
         # Starlette chạy route handler (def, không async def) trong threadpool
         # -> dict này có thể bị nhiều request đụng vào đồng thời.
         self._lock = threading.Lock()
@@ -47,3 +48,25 @@ class InMemorySessionStore:
     def delete(self, session_id: str) -> None:
         with self._lock:
             self._data.pop(session_id, None)
+            self._streaks.pop(session_id, None)
+
+    def get_clarification_streak(self, session_id: str) -> int:
+        with self._lock:
+            entry = self._streaks.get(session_id)
+            if entry is None:
+                return 0
+            streak, expires_at = entry
+            if time.time() >= expires_at:
+                del self._streaks[session_id]
+                return 0
+            return streak
+
+    def set_clarification_streak(
+        self,
+        session_id: str,
+        streak: int,
+        ttl_seconds: int | None = None,
+    ) -> None:
+        ttl = ttl_seconds if ttl_seconds is not None else self._default_ttl
+        with self._lock:
+            self._streaks[session_id] = (streak, time.time() + ttl)

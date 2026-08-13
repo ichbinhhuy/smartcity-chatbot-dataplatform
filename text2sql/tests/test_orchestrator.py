@@ -151,6 +151,49 @@ def test_clarification_includes_suggestions_from_candidates(catalog, sample_valu
     assert isinstance(result.suggestions, list)
 
 
+class _FakeOODRetriever:
+    """Giả lập RAG layer trả về is_out_of_domain=True — dùng để test nhánh
+    OOD guardrail mà không cần model embedding thật (xem
+    app/retrieval/retriever.py: backend='hash' luôn tắt guardrail)."""
+
+    cosine_threshold = 0.3  # orchestrator.py đọc field này để build error message
+
+    def retrieve(self, question, top_k=5):
+        return {
+            "measures": [],
+            "dimensions": [],
+            "cubes": [],
+            "max_cosine_score": 0.05,
+            "is_out_of_domain": True,
+        }
+
+
+def test_out_of_domain_question_triggers_clarification_without_calling_llm(
+    catalog, sample_values, settings
+):
+    """Câu hỏi ngoài phạm vi domain phải bị chặn NGAY ở RAG layer — không tốn
+    1 lượt gọi LLM nào. Xem docs/04-ambiguous-question-handling.md case E."""
+    orch = NLUOrchestrator(
+        catalog,
+        llm_client=FakeLLMClient([]),
+        sample_values=sample_values,
+        settings=settings,
+        retriever=_FakeOODRetriever(),
+    )
+    result = orch.interpret("Giá vàng hôm nay bao nhiêu?")
+
+    assert result.status is NLUStatus.CLARIFICATION
+    assert "ngoài phạm vi" in result.message
+    assert result.suggestions  # liệt kê toàn bộ cube title đang hỗ trợ
+    assert orch.llm.calls == []
+
+    # Message shape đúng — không double-nest content thành dict (xem
+    # orchestrator.py `_append_assistant_message`).
+    assistant_msg = result.messages[-1]
+    assert assistant_msg["role"] == "assistant"
+    assert isinstance(assistant_msg["content"], str)
+
+
 def test_runtime_context_goes_after_the_question(catalog, sample_values, settings):
     """System prompt phải giữ nguyên byte để prompt cache (nếu provider hỗ trợ) còn tác dụng."""
     orch = _orchestrator(

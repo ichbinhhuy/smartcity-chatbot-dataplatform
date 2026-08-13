@@ -15,6 +15,7 @@ from typing import Any
 import redis
 
 _KEY_PREFIX = "text2sql:session:"
+_STREAK_KEY_PREFIX = "text2sql:session:streak:"
 
 
 class RedisSessionStore:
@@ -37,6 +38,10 @@ class RedisSessionStore:
     @staticmethod
     def _key(session_id: str) -> str:
         return f"{_KEY_PREFIX}{session_id}"
+
+    @staticmethod
+    def _streak_key(session_id: str) -> str:
+        return f"{_STREAK_KEY_PREFIX}{session_id}"
 
     def get(self, session_id: str) -> list[dict[str, Any]]:
         try:
@@ -67,5 +72,31 @@ class RedisSessionStore:
     def delete(self, session_id: str) -> None:
         try:
             self._client.delete(self._key(session_id))
+            self._client.delete(self._streak_key(session_id))
         except redis.exceptions.RedisError as exc:
             print(f"[RedisSessionStore] delete() thất bại: {exc} — session_id={session_id}.")
+
+    def get_clarification_streak(self, session_id: str) -> int:
+        try:
+            raw = self._client.get(self._streak_key(session_id))
+        except redis.exceptions.RedisError as exc:
+            print(f"[RedisSessionStore] get_clarification_streak() thất bại: {exc} — fallback về 0.")
+            return 0
+        if raw is None:
+            return 0
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return 0
+
+    def set_clarification_streak(
+        self,
+        session_id: str,
+        streak: int,
+        ttl_seconds: int | None = None,
+    ) -> None:
+        ttl = ttl_seconds if ttl_seconds is not None else self._default_ttl
+        try:
+            self._client.setex(self._streak_key(session_id), ttl, str(streak))
+        except redis.exceptions.RedisError as exc:
+            print(f"[RedisSessionStore] set_clarification_streak() thất bại: {exc} — session_id={session_id} không được lưu.")

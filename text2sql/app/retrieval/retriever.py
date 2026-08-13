@@ -96,6 +96,7 @@ class CatalogRetriever:
         qdrant_host: str | None = None,
         mode: str | None = None,
         cosine_threshold: float | None = None,
+        top_k_cubes: int | None = None,
     ) -> None:
         self.catalog = catalog
         self.qdrant_host = qdrant_host or os.getenv("QDRANT_HOST", "qdrant")
@@ -105,7 +106,14 @@ class CatalogRetriever:
         self.collection_name = "cube_catalog"
         raw_threshold = os.getenv("COSINE_THRESHOLD", "0.3")
         self.cosine_threshold = cosine_threshold if cosine_threshold is not None else float(raw_threshold)
-        
+        # Số cube Top-K chọn ở Stage 1 (CUBE_FIRST). Mặc định 3 (tăng từ 2) để
+        # giảm rủi ro recall miss khi RRF xếp nhầm cube đúng ra ngoài top-2 —
+        # xem docs/04-ambiguous-question-handling.md case F / FIX-09. Rẻ vì
+        # Cube-First đã nạp 100% measures/dimensions của cube được chọn, thêm
+        # 1 cube chỉ đánh đổi prompt dài hơn một chút.
+        raw_top_k = os.getenv("RAG_TOP_K_CUBES", "3")
+        self.top_k_cubes = top_k_cubes if top_k_cubes is not None else int(raw_top_k)
+
         self.cube_documents: list[dict[str, Any]] = []
         self.column_documents: list[dict[str, Any]] = []
 
@@ -244,10 +252,10 @@ class CatalogRetriever:
             return self._retrieve_column_hybrid(question, top_k)
         else:
             print("[RAG] Retrieval Mode 2: CUBE_FIRST (Stage 1 Cube -> 100% Cols)")
-            return self._retrieve_cube_first(question, top_k_cubes=2)
+            return self._retrieve_cube_first(question, top_k_cubes=self.top_k_cubes)
 
-    def _retrieve_cube_first(self, question: str, top_k_cubes: int = 2) -> dict[str, list[str]]:
-        """MODE 2: Stage 1 RAG chọn Top 1-2 Cubes -> Nạp trọn bộ 100% Measures & Dimensions cho LLM 70B."""
+    def _retrieve_cube_first(self, question: str, top_k_cubes: int = 3) -> dict[str, list[str]]:
+        """MODE 2: Stage 1 RAG chọn Top-K Cubes (mặc định 3, xem `self.top_k_cubes`) -> Nạp trọn bộ 100% Measures & Dimensions cho LLM 70B."""
         q_tokens = self._tokenize(question)
 
         # 1. BM25 Overlap Ranks trên tập Cube Documents
@@ -294,8 +302,17 @@ class CatalogRetriever:
                     selected_dimensions.add(d.name)
 
         max_cosine = float(dense_list[0][0]) if dense_list else 0.0
-        # Tạm thời gỡ bỏ rào cản cosine 0.3
-        # is_out_of_domain = (max_cosine < self.cosine_threshold) if self.embedding_engine.backend != "hash" else False
+        # TẠM THỜI TẮT LẠI (2026-08-13): test tay trên UI thật (embedding thật,
+        # không phải hash-fallback) phát hiện false positive — câu hỏi rất cụ
+        # thể, đúng domain traffic_flow ("Số lần vượt tốc độ và tốc độ trung
+        # bình ở khu TTTM từ ngày 21-27/7...") vẫn bị chặn nhầm vì
+        # cosine_threshold=0.3 chưa được calibrate bằng eval set thật (macro
+        # document dạng "keyword soup" của từng cube có thể khiến cosine
+        # tuyệt đối với câu hỏi tự nhiên thấp hơn 0.3 dù RRF vẫn xếp hạng đúng
+        # cube). Xem docs/04-ambiguous-question-handling.md case E.
+        # is_out_of_domain = (
+        #     max_cosine < self.cosine_threshold if self.embedding_engine.backend != "hash" else False
+        # )
         is_out_of_domain = False
 
         return {
@@ -327,8 +344,10 @@ class CatalogRetriever:
         dense_rank_map = {doc["field_name"]: rank + 1 for rank, (_, doc) in enumerate(dense_list)}
 
         max_cosine = float(dense_list[0][0]) if dense_list else 0.0
-        # Tạm thời gỡ bỏ rào cản cosine 0.3
-        # is_out_of_domain = (max_cosine < self.cosine_threshold) if self.embedding_engine.backend != "hash" else False
+        # TẠM THỜI TẮT LẠI — xem ghi chú tương ứng trong _retrieve_cube_first().
+        # is_out_of_domain = (
+        #     max_cosine < self.cosine_threshold if self.embedding_engine.backend != "hash" else False
+        # )
         is_out_of_domain = False
 
         rrf_scores = []

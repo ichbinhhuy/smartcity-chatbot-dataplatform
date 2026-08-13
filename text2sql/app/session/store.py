@@ -34,3 +34,20 @@ class SessionStore(Protocol):
         ...
 
     def delete(self, session_id: str) -> None: ...
+
+    # ---- Clarification-loop cap (xem app/server.py `_apply_clarification_cap`) ----
+    # Đếm riêng, tách khỏi `messages` — history không mang metadata trạng
+    # thái (QUERY/CLARIFICATION/...) theo từng lượt nên không thể suy ra
+    # streak đáng tin cậy từ nội dung message. Cùng contract degrade-êm như
+    # get()/save() ở trên.
+
+    def get_clarification_streak(self, session_id: str) -> int:
+        """Trả về 0 nếu session chưa tồn tại/đã hết hạn."""
+        ...
+
+    def set_clarification_streak(
+        self,
+        session_id: str,
+        streak: int,
+        ttl_seconds: int | None = None,
+    ) -> None: ...
