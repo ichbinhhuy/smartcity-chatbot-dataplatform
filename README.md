@@ -21,6 +21,8 @@ Chương trình AI thực chiến, Batch 02
    - [3.2 Data Transformation](#32-data-transformation)
    - [3.3 Text-to-SQL Semantic Chatbot](#33-text-to-sql-semantic-chatbot)
 4. [Kết quả đạt được](#4-kết-quả-đạt-được)
+   - [4.1 Tiêu chí và Phương pháp đánh giá (Evaluation Framework)](#41-tiêu-chí-và-phương-pháp-đánh-giá-evaluation-framework)
+   - [4.2 Định hướng thiết kế Bộ dữ liệu Kiểm thử (Traffic Light Model)](#42-định-hướng-thiết-kế-bộ-dữ-liệu-kiểm-thử-traffic-light-model)
 5. [Kết luận và hướng phát triển](#5-kết-luận-và-hướng-phát-triển)
 
 ---
@@ -222,6 +224,56 @@ Xây dựng pipeline xử lý dữ liệu theo kiến trúc Medallion (Data Lake
 
 ## 4. KẾT QUẢ ĐẠT ĐƯỢC
 
+### 4.1 Tiêu chí và Phương pháp đánh giá (Evaluation Framework)
+
+Để đánh giá toàn diện hệ thống Text-to-Semantic-to-SQL Chatbot một cách khách quan, chính xác và bám sát thực tế nghiệp vụ, nhóm xây dựng khung đánh giá tập trung vào **4 chỉ số cốt lõi**, bao quát từ tầng hiểu ý định (NLU), tầng sinh câu trả lời (NLG), tầng an toàn/định tuyến (Guardrail/Clarification) cho đến hiệu năng vận hành (Performance):
+
+| # | Chỉ số đánh giá | Tầng đo lường | Công cụ sử dụng | Mục tiêu đo lường | Ngưỡng kỳ vọng (Target) |
+| :-: | :--- | :--- | :--- | :--- | :-: |
+| **1** | **Semantic Exact Match** | NLU Layer | Python + Ground Truth | Đánh giá độ chính xác của JSON tham số (`measures`, `dimensions`, `filters`, `timeDimensions`) do LLM sinh ra so với nhãn chuẩn. | **$\ge 90\%$** |
+| **2** | **Response Semantic Correctness** | NLG Layer | DeepEval `GEval` (`expected_output`) | So sánh câu trả lời văn bản cuối cùng của LLM với câu trả lời mẫu chuẩn từ chuyên gia (đo độ đúng số liệu, đúng trọng tâm và không trả lời thừa thông tin). | **$\ge 92\%$** |
+| **3** | **Routing & Clarification Precision** | Safety & Ambiguity Layer | Python Script | Đánh giá khả năng phát hiện câu hỏi mơ hồ để hỏi lại (Clarification) và câu hỏi ngoài phạm vi/phá hoại để từ chối an toàn (Refusal). | **$\ge 90\%$** |
+| **4** | **P95 End-to-End Latency** | Performance Layer | Langfuse Tracing | Thời gian phản hồi thực tế của toàn bộ pipeline ở phân vị thứ 95 (đảm bảo 95% request hoàn thành nhanh chóng). | **$\le 2.5\text{s}$** |
+
+#### 🎯 Lý do lựa chọn bộ chỉ số trên:
+* **Tính đại diện cho kiến trúc Semantic Layer (Chỉ số 1):** Vì hệ thống không để LLM viết SQL trực tiếp mà ép qua cấu trúc JSON của Cube Core, nên *Semantic Exact Match* là minh chứng sống còn khẳng định LLM đã hiểu đúng và trích xuất đúng tham số vào khuôn mẫu định sẵn.
+* **Giá trị thực tế cao hơn Faithfulness truyền thống (Chỉ số 2):** Thay vì chỉ kiểm tra xem LLM có bịa số hay không, việc đối chiếu trực tiếp với câu trả lời mẫu chuẩn (`expected_output`) qua DeepEval `GEval` giúp kiểm soát chặt chẽ cả 3 yếu tố: *đúng số liệu*, *đúng trọng tâm câu hỏi* và *triệt tiêu hiện tượng trả lời thừa (Over-answering)* khi dữ liệu từ Data Warehouse trả về nhiều trường hơn yêu cầu.
+* **Đảm bảo tính an toàn và trải nghiệm người dùng (Chỉ số 3):** Đo lường năng lực phân loại thông minh của hệ thống trước các câu hỏi mơ hồ (Yellow Cases) và các cuộc tấn công Prompt Injection / ngoài phạm vi (Red Cases).
+* **Đo lường độ trễ thực tế (Chỉ số 4):** Việc đo P95 Latency qua Langfuse phản ánh chính xác trải nghiệm người dùng cuối thay vì chỉ tính trung bình cộng (Average).
+
+---
+
+### 4.2 Định hướng thiết kế Bộ dữ liệu Kiểm thử (Traffic Light Model)
+
+Để phục vụ đo lường và đánh giá các chỉ số trên, tập dữ liệu kiểm thử được định hướng thiết kế gồm **30 kịch bản câu hỏi tiêu chuẩn** phân bổ theo mô hình 3 nhóm màu đèn giao thông (**Traffic Light Model**), bao phủ toàn bộ 6 Data Marts nghiệp vụ (`traffic_flow`, `air_quality`, `smart_parking`, `smart_lighting`, `street_incidents`, `city_health_index`) và 3 phân khu đô thị (`Can ho`, `Khu biet thu`, `TTTM`):
+
+```
+                     ┌─────────────────────────────────────────┐
+                     │    KHUNG KIỂM THỬ BENCHMARK (30 CASES)  │
+                     └────────────────────┬────────────────────┘
+                                          │
+         ┌────────────────────────────────┼────────────────────────────────┐
+         ▼                                ▼                                ▼
+ 🟢 15 GREEN CASES                🟡 10 YELLOW CASES                🔴 5 RED CASES
+ (Happy Path - Đơn ý định)        (Ambiguous - Cần làm rõ)         (Out-of-Domain & An toàn)
+```
+
+* **🟢 Nhóm 1: 15 Green Cases (Happy Path – Đơn ý định hoàn chỉnh):**
+  - Bao gồm các câu hỏi có đầy đủ 3 trụ cột dữ liệu: *Chỉ số (Measure)* + *Địa danh (Filter/Section)* + *Thời gian (Time)*.
+  - Phân bổ đều trên cả 6 Data Marts (Lưu lượng xe, AQI, Bãi đỗ xe, Chiếu sáng, Sự cố, Livability).
+  - Dùng để đo lường: **Semantic Exact Match**, **Response Semantic Correctness** và **P95 Latency**.
+
+* **🟡 Nhóm 2: 10 Yellow Cases (Ambiguous – Nhận diện mơ hồ & Làm rõ):**
+  - Bao gồm các câu hỏi thiếu thông tin, hỏi quá chung chung (*"cho tôi xem số liệu"*), đa domain (nhắc 2 Cube cùng lúc), hoặc tên phân khu chưa rõ ràng.
+  - Kỳ vọng hệ thống kích hoạt **Clarification Flow** kèm các chip gợi ý trắc nghiệm thay vì suy diễn bừa bãi.
+  - Dùng để đo lường: **Routing & Clarification Precision**.
+
+* **🔴 Nhóm 3: 5 Red Cases (Out-of-Domain & Safety Guardrail – Từ chối an toàn):**
+  - Bao gồm các câu hỏi ngoài phạm vi dữ liệu đô thị (*"giá vàng", "thời tiết Tokyo"*), sử dụng sai mục đích (*"làm thơ"*), hoặc tấn công bảo mật (*SQL Injection `DROP TABLE`, Prompt Injection / Jailbreak*).
+  - Kỳ vọng hệ thống kích hoạt **Refusal** từ chối lịch sự và bảo vệ an toàn cơ sở dữ liệu.
+  - Dùng để đo lường: **Routing & Clarification Precision**.
+
 ---
 
 ## 5. KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN
+
