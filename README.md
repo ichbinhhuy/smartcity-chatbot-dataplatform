@@ -13,12 +13,13 @@ Chương trình AI thực chiến, Batch 02
 1. [Tổng quan đề tài](#1-tổng-quan-đề-tài)
    - [1.1 Chi tiết đề tài và kế hoạch sprint](#11-chi-tiết-đề-tài-và-kế-hoạch-sprint)
    - [1.2 Mục tiêu đề tài](#12-mục-tiêu-đề-tài)
-2. [Bối cảnh nghiệp vụ và nền tảng công nghệ](#2-bối-cảnh-nghiệp-vụ-và-nền-tảng-công-nghệ)
+2. [Bối cảnh nghiệp vụ và đề xuất giải pháp](#2-bối-cảnh-nghiệp-vụ-và-đề-xuất-giải-pháp)
    - [2.1 Làm rõ bài toán và dữ liệu](#21-làm-rõ-bài-toán-và-dữ-liệu)
-   - [2.2 Tech Stack và công nghệ sử dụng](#22-tech-stack-và-công-nghệ-sử-dụng)
-3. [Triển khai đề tài](#3-triển-khai-đề-tài)
-   - [3.1 Data Transformation](#31-data-transformation)
-   - [3.2 Text-to-SQL Semantic Chatbot](#32-text-to-sql-semantic-chatbot)
+   - [2.2 Đề xuất giải pháp kiến trúc](#22-đề-xuất-giải-pháp-kiến-trúc)
+3. [Thiết kế và triển khai hệ thống](#3-thiết-kế-và-triển-khai-hệ-thống)
+   - [3.1 Tổng quan Tech Stack và môi trường công nghệ](#31-tổng-quan-tech-stack-và-môi-trường-công-nghệ)
+   - [3.2 Data Transformation](#32-data-transformation)
+   - [3.3 Text-to-SQL Semantic Chatbot](#33-text-to-sql-semantic-chatbot)
 4. [Kết quả đạt được](#4-kết-quả-đạt-được)
 5. [Kết luận và hướng phát triển](#5-kết-luận-và-hướng-phát-triển)
 
@@ -42,7 +43,7 @@ Chương trình AI thực chiến, Batch 02
 
 ---
 
-## 2. BỐI CẢNH NGHIỆP VỤ VÀ NỀN TẢNG CÔNG NGHỆ
+## 2. BỐI CẢNH NGHIỆP VỤ VÀ ĐỀ XUẤT GIẢI PHÁP
 
 ### 2.1 Làm rõ bài toán và dữ liệu 
 Để dễ hình dung hơn, bài toán được định nghĩa chi tiết như sau:
@@ -67,7 +68,22 @@ Mỗi đoạn đường được trang bị hệ thống hạ tầng IoT và thu
 
 ---
 
-### 2.2 Tech Stack và công nghệ sử dụng
+### 2.2 Đề xuất giải pháp kiến trúc
+
+Với mục tiêu giải quyết bài toán chatbot hỏi đáp dữ liệu đô thị thông minh chính xác, an toàn và tối ưu hiệu năng, nhóm đề xuất kiến trúc **Text-to-Semantic-to-SQL**, kết hợp LLM Agent và tầng Semantic Layer trung gian qua Cube Core.
+
+Việc xây dựng Semantic Layer thay vì cho LLM viết SQL trực tiếp nhằm ép LLM chỉ được đóng vai trò trích xuất tham số vào một cấu trúc JSON đã được định nghĩa sẵn. Việc dịch ra câu lệnh SQL đúng 100% được giao hoàn toàn cho Semantic Engine tất định xử lý, tránh việc LLM bị ảo giác (hallucination) tự bịa tên bảng, cột hoặc công thức tính toán, dẫn đến kết quả truy vấn không chính xác và thiếu đồng nhất.
+
+Để giải quyết bài toán Text-to-SQL, hiện có 3 hướng tiếp cận công nghệ chính:
+* **Direct Text-to-SQL (Vanna.ai, LangChain SQL):** Đưa trực tiếp cấu trúc DB vào prompt để LLM tự viết SQL. Cách này làm nhanh nhưng rủi ro cao vì LLM dễ bị ảo giác cú pháp, sai lệch công thức.
+* **Giải pháp đóng gói sẵn All-in-One (như Wren AI):** Tích hợp sẵn toàn bộ từ giao diện Chat, AI Agent đến tầng Semantic. Ưu điểm là dùng được ngay và dễ thao tác với non-tech, nhưng nhược điểm là hệ thống khép kín, rất khó tùy chỉnh thuật toán AI xử lý tiếng Việt riêng hoặc tái sử dụng dữ liệu cho các hệ thống khác.
+* **Tầng Semantic độc lập (như Cube Core):** Tách rời hoàn toàn phần xử lý dữ liệu ngữ nghĩa khỏi giao diện. Giải pháp này cho phép hệ thống làm chủ toàn bộ tầng AI Agent phía trên, đồng thời cung cấp API chuẩn cho cả Chatbot và các công cụ BI truyền thống (Tableau, Superset, Power BI…). Cube hỗ trợ tối ưu truy vấn lớn với cơ chế pre-aggregations, cùng với hệ sinh thái lớn sẽ giúp dễ tùy chỉnh và tránh bị vendor lock-in. **Đây là giải pháp được lựa chọn cho hệ thống hiện tại.**
+
+---
+
+## 3. THIẾT KẾ VÀ TRIỂN KHAI HỆ THỐNG
+
+### 3.1 Tổng quan Tech Stack và môi trường công nghệ
 
 | Phân tầng kiến trúc | Thành phần chức năng | Công nghệ sử dụng | Vai trò trong hệ thống |
 |---|---|---|---|
@@ -86,9 +102,7 @@ Mỗi đoạn đường được trang bị hệ thống hạ tầng IoT và thu
 
 ---
 
-## 3. TRIỂN KHAI ĐỀ TÀI
-
-### 3.1 Data Transformation
+### 3.2 Data Transformation
 * **Input:** Dữ liệu thô thu thập từ 5 nguồn ngoại vi (Camera AI giao thông, Cảm biến bãi đỗ xe LoRaWAN, Trạm quan trắc môi trường, Hệ thống chiếu sáng SCADA, Nhật ký sự cố CSGT) dưới các định dạng JSON, XML, CSV.
 * **Output:** Dữ liệu sạch, chuẩn hóa và đã được tiền tính toán chỉ số (Pre-computed / Roll-up) theo mô hình Star Schema (1 Dim + 6 Fact Marts) lưu trữ trên StarRocks Gold sẵn sàng phục vụ Semantic Layer.
 
@@ -130,7 +144,7 @@ Xây dựng pipeline xử lý dữ liệu theo kiến trúc Medallion (Data Lake
 
 ---
 
-### 3.2 Text-to-SQL Semantic Chatbot
+### 3.3 Text-to-SQL Semantic Chatbot
 * **Input:** Câu hỏi ngôn ngữ tự nhiên (tiếng Việt) từ người dùng về các chỉ số đô thị thông minh (ví dụ: *"Hôm nay đoạn 1 có bao nhiêu xe vi phạm quá tốc độ?"*).
 * **Output:** Văn bản phân tích số liệu súc tích, giải đáp chính xác câu hỏi dựa trên dữ liệu truy vấn từ StarRocks Gold.
 
