@@ -194,6 +194,24 @@ def test_out_of_domain_question_triggers_clarification_without_calling_llm(
     assert isinstance(assistant_msg["content"], str)
 
 
+def test_dimension_only_query_resolves_to_query_status(catalog, sample_values, settings):
+    """Regression cho bug thật: 'có bao nhiêu khu vực trong smartcity' từng bị
+    hỏi lại sai hướng vì cube `districts` không có measure nào và hệ thống
+    trước đây bắt buộc measures phải có ≥1 phần tử. Giờ measures rỗng +
+    dimensions không rỗng phải resolve thẳng thành QUERY."""
+    orch = _orchestrator(
+        catalog,
+        sample_values,
+        settings,
+        [tool_call_response({"dimensions": ["districts.name"]})],
+    )
+    result = orch.interpret("Có bao nhiêu khu vực trong smartcity?")
+
+    assert result.status is NLUStatus.QUERY
+    assert result.query.measures == []
+    assert result.query.dimensions == ["districts.name"]
+
+
 def test_runtime_context_goes_after_the_question(catalog, sample_values, settings):
     """System prompt phải giữ nguyên byte để prompt cache (nếu provider hỗ trợ) còn tác dụng."""
     orch = _orchestrator(

@@ -47,6 +47,25 @@
     measures: [air_quality.avg_aqi]
     time_dimensions: [air_quality.recorded_at]
 
+- id: dimension_only_list_districts
+  question: "Có bao nhiêu khu vực trong smartcity?"
+  expect:
+    status: query
+    measures: []
+    dimensions: [districts.name]
+
+- id: dimension_only_list_districts_alt_phrasing
+  question: "list các khu trong smartcity"
+  expect:
+    status: query
+    measures: []
+    dimensions: [districts.name]
+    # Regression cho bug thật: từng trả về air_quality.section_id thay vì
+    # districts.name — xem docs/04-ambiguous-question-handling.md và
+    # prompt.py Rule 16. Chỉ verify được bằng LLM thật (eval harness), vì
+    # test_orchestrator.py dùng FakeLLMClient không thể test model có follow
+    # đúng rule prompt hay không.
+
 # --- các trường hợp KHÔNG được gọi tool -------------------------------------
 
 - id: ambiguous_question
