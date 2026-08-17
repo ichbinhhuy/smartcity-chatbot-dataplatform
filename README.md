@@ -231,13 +231,13 @@ Xây dựng pipeline xử lý dữ liệu theo kiến trúc Medallion (Data Lake
 | # | Chỉ số đánh giá | Tầng đo lường | Công cụ sử dụng | Mục tiêu đo lường | Ngưỡng kỳ vọng (Target) |
 | :-: | :--- | :--- | :--- | :--- | :-: |
 | **1** | **Semantic Exact Match** | NLU Layer | Python + Ground Truth | Đánh giá độ chính xác của JSON tham số (`measures`, `dimensions`, `filters`, `timeDimensions`) do LLM sinh ra so với nhãn chuẩn. | **$\ge 90\%$** |
-| **2** | **Response Semantic Correctness** | NLG Layer | DeepEval `GEval` (`expected_output`) | So sánh câu trả lời văn bản cuối cùng của LLM với câu trả lời mẫu chuẩn từ chuyên gia (đo độ đúng số liệu, đúng trọng tâm và không trả lời thừa thông tin). | **$\ge 92\%$** |
+| **2** | **Faithfulness (Độ trung thực)** | NLG Layer | DeepEval `FaithfulnessMetric` | Đánh giá câu trả lời văn bản của LLM có trung thực $100\%$ với dữ liệu số liệu trả về từ Data Warehouse hay không, phát hiện và triệt tiêu ảo giác bịa số. | **$\ge 95\%$** |
 | **3** | **Routing & Clarification Precision** | Safety & Ambiguity Layer | Python Script | Đánh giá khả năng phát hiện câu hỏi mơ hồ để hỏi lại (Clarification) và câu hỏi ngoài phạm vi/phá hoại để từ chối an toàn (Refusal). | **$\ge 90\%$** |
 | **4** | **P95 End-to-End Latency** | Performance Layer | Langfuse Tracing | Thời gian phản hồi thực tế của toàn bộ pipeline ở phân vị thứ 95 (đảm bảo 95% request hoàn thành nhanh chóng). | **$\le 2.5\text{s}$** |
 
 #### 🎯 Lý do lựa chọn bộ chỉ số trên:
 * **Tính đại diện cho kiến trúc Semantic Layer (Chỉ số 1):** Vì hệ thống không để LLM viết SQL trực tiếp mà ép qua cấu trúc JSON của Cube Core, nên *Semantic Exact Match* là minh chứng sống còn khẳng định LLM đã hiểu đúng và trích xuất đúng tham số vào khuôn mẫu định sẵn.
-* **Giá trị thực tế cao hơn Faithfulness truyền thống (Chỉ số 2):** Thay vì chỉ kiểm tra xem LLM có bịa số hay không, việc đối chiếu trực tiếp với câu trả lời mẫu chuẩn (`expected_output`) qua DeepEval `GEval` giúp kiểm soát chặt chẽ cả 3 yếu tố: *đúng số liệu*, *đúng trọng tâm câu hỏi* và *triệt tiêu hiện tượng trả lời thừa (Over-answering)* khi dữ liệu từ Data Warehouse trả về nhiều trường hơn yêu cầu.
+* **Đảm bảo tính toàn vẹn số liệu và tự động hóa 100% (Chỉ số 2):** Thay vì tốn công viết câu trả lời mẫu thủ công, *Faithfulness* sử dụng trực tiếp kết quả JSON truy vấn từ StarRocks làm ngữ cảnh đối chiếu. Chỉ số này bảo đảm LLM NLG chỉ đóng vai trò tóm tắt trung thực, không bịa đặt hoặc làm sai lệch con số thực tế.
 * **Đảm bảo tính an toàn và trải nghiệm người dùng (Chỉ số 3):** Đo lường năng lực phân loại thông minh của hệ thống trước các câu hỏi mơ hồ (Yellow Cases) và các cuộc tấn công Prompt Injection / ngoài phạm vi (Red Cases).
 * **Đo lường độ trễ thực tế (Chỉ số 4):** Việc đo P95 Latency qua Langfuse phản ánh chính xác trải nghiệm người dùng cuối thay vì chỉ tính trung bình cộng (Average).
 
