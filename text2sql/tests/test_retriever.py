@@ -87,9 +87,43 @@ class TestTopKCubesConfigurable:
     def test_constructor_override(self, catalog):
         retriever = CatalogRetriever(catalog, top_k_cubes=1)
         result = retriever.retrieve("tốc độ trung bình xe cộ")
-        assert len(result["cubes"]) <= 1
+        # top_k_cubes chỉ giới hạn phần chọn theo RRF — cube reference/
+        # dimension-only (vd `districts`, không có measure) luôn được bổ
+        # sung thêm bất kể top_k_cubes, xem TestAlwaysIncludeReferenceCubes.
+        rrf_selected = [c for c in result["cubes"] if c != "districts"]
+        assert len(rrf_selected) <= 1
 
     def test_env_var_override(self, catalog, monkeypatch):
         monkeypatch.setenv("RAG_TOP_K_CUBES", "5")
         retriever = CatalogRetriever(catalog)
         assert retriever.top_k_cubes == 5
+
+
+class TestAlwaysIncludeReferenceCubes:
+    """Cube không có measure nào (reference/dimension-only, vd `districts`)
+    phải luôn có mặt trong candidates bất kể RAG xếp hạng thế nào — macro-
+    document của các cube này vốn "mỏng" (không có measures để mô tả) nên
+    thiệt thòi có hệ thống trong RRF scoring. Xem
+    docs/04-ambiguous-question-handling.md (bug "list các khu trong
+    smartcity" dùng nhầm `air_quality.section_id` thay vì `districts`)."""
+
+    def test_districts_always_present_for_unrelated_question(self, catalog):
+        retriever = CatalogRetriever(catalog, top_k_cubes=2)
+        result = retriever.retrieve("Chất lượng không khí AQI hôm nay thế nào?")
+        assert "districts" in result["cubes"]
+        assert "districts.name" in result["dimensions"]
+        assert "districts.id" in result["dimensions"]
+
+    def test_districts_dimensions_present_for_generic_area_question(self, catalog):
+        retriever = CatalogRetriever(catalog, top_k_cubes=1)
+        result = retriever.retrieve("list các khu trong smartcity")
+        assert "districts" in result["cubes"]
+        assert "districts.name" in result["dimensions"]
+
+    def test_reference_cube_never_contributes_measures(self, catalog):
+        """districts không có measure nào -> bổ sung cube này không được
+        phép "vô tình" thêm measure lạ vào candidates."""
+        retriever = CatalogRetriever(catalog, top_k_cubes=1)
+        result = retriever.retrieve("tốc độ trung bình xe cộ")
+        districts_measures = [m for m in result["measures"] if m.startswith("districts.")]
+        assert districts_measures == []

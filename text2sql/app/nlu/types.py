@@ -11,7 +11,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 CubeFilterOperator = Literal[
     "equals", "notEquals", "contains", "notContains", "gt", "gte", "lt", "lte", "set", "notSet"
@@ -54,14 +54,29 @@ class CubeOrderEntry(BaseModel):
 
 
 class CubeQuery(BaseModel):
-    """Kết quả cuối cùng của bước NLU — gửi thẳng tới Cube REST API `/load`."""
+    """Kết quả cuối cùng của bước NLU — gửi thẳng tới Cube REST API `/load`.
 
-    measures: list[str] = Field(min_length=1)
+    `measures` KHÔNG bắt buộc ≥1 — Cube REST API tự nó hỗ trợ query
+    dimension-only (kiểu SELECT DISTINCT, vd "có bao nhiêu khu vực" trên
+    cube `districts` vốn không có measure nào). Ràng buộc thật sự là "phải
+    có ít nhất 1 trong 2 (measures HOẶC dimensions)", enforce ở
+    `_require_measures_or_dimensions` bên dưới thay vì `Field(min_length=1)`.
+    """
+
+    measures: list[str] = Field(default_factory=list)
     dimensions: list[str] = Field(default_factory=list)
     filters: list[CubeFilter] = Field(default_factory=list)
     timeDimensions: list[CubeTimeDimension] = Field(default_factory=list)
     order: list[CubeOrderEntry] = Field(default_factory=list)
     limit: int | None = None
+
+    @model_validator(mode="after")
+    def _require_measures_or_dimensions(self) -> "CubeQuery":
+        if not self.measures and not self.dimensions:
+            raise ValueError(
+                "Cần ít nhất 1 measure hoặc 1 dimension — không thể để cả hai đều rỗng."
+            )
+        return self
 
     def to_cube_payload(self) -> dict[str, Any]:
         """Serialize đúng format Cube REST API mong đợi (`order` là object, không phải mảng)."""

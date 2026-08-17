@@ -117,6 +117,32 @@ def test_fuzzy_matches_filter_value(catalog, sample_values, settings):
     assert result.query.filters[0].values == ["EVENING_FULL"]
 
 
+def test_dimension_only_query_is_accepted(catalog, sample_values, settings):
+    """Cube `districts` không có measure nào — câu hỏi kiểu 'có bao nhiêu khu
+    vực' phải build được query chỉ-dimension thay vì bị chặn vì thiếu
+    measure. Xem docs/04-ambiguous-question-handling.md."""
+    result = _validator(catalog, sample_values, settings).validate(
+        {"dimensions": ["districts.name"]}
+    )
+    assert result.ok, result.errors
+    assert result.query.measures == []
+    assert result.query.dimensions == ["districts.name"]
+
+
+def test_dimension_only_query_still_enforces_cross_cube_guard(catalog, sample_values, settings):
+    result = _validator(catalog, sample_values, settings).validate(
+        {"dimensions": ["districts.name", "traffic_flow.camera_id"]}
+    )
+    assert not result.ok
+    assert any("thuộc Cube khác" in e for e in result.errors)
+
+
+def test_rejects_query_with_no_measures_and_no_dimensions(catalog, sample_values, settings):
+    result = _validator(catalog, sample_values, settings).validate({})
+    assert not result.ok
+    assert any("measure" in e.lower() and "dimension" in e.lower() for e in result.errors)
+
+
 def test_ambiguous_filter_value_is_rejected(catalog, settings):
     """Khi ≥2 giá trị allowed gần giống nhau tới mức không đủ tin cậy để tự
     đoán, validator phải trả lỗi (đẩy vào repair loop) thay vì âm thầm chọn

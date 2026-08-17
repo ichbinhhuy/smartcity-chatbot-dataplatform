@@ -23,7 +23,11 @@ def build_query_tool(catalog: Catalog, candidates: dict[str, list[str]] | None =
     """Tool duy nhất: LLM điền form đúng shape Cube thay vì viết SQL."""
     time_dimension_names = catalog.time_dimension_names()
 
-    m_desc = "Các chỉ số cần tính, dạng <cube>.<measure>."
+    m_desc = (
+        "Các chỉ số cần tính, dạng <cube>.<measure>. Có thể để RỖNG nếu câu hỏi chỉ cần "
+        "liệt kê/đếm số lượng theo dimensions (vd 'có bao nhiêu khu vực') mà không cần tính "
+        "chỉ số nào — khi đó BẮT BUỘC dimensions phải có ít nhất 1 phần tử."
+    )
     d_desc = "Các chiều để nhóm kết quả."
     if candidates and candidates.get("measures"):
         m_desc += f" Gợi ý Top-K candidate: {', '.join(candidates['measures'])}"
@@ -34,9 +38,11 @@ def build_query_tool(catalog: Catalog, candidates: dict[str, list[str]] | None =
         "name": QUERY_TOOL_NAME,
         "description": (
             "Truy vấn dữ liệu Smart City qua Cube. "
-            "Chỉ gọi tool này khi đã xác định được chắc chắn measure người dùng cần. "
+            "Chỉ gọi tool này khi đã xác định được chắc chắn measure hoặc dimension người dùng cần. "
             "measures/dimensions phải lấy từ danh sách enum — không được bịa tên mới. "
-            "Mọi measure trong một lần gọi phải thuộc cùng một cube (cùng tiền tố trước dấu chấm)."
+            "Mọi measure/dimension/filter trong một lần gọi phải thuộc cùng một cube (cùng tiền tố trước dấu chấm). "
+            "Nếu câu hỏi chỉ cần liệt kê/đếm theo dimension (không cần tính chỉ số cụ thể), "
+            "được phép để measures rỗng — nhưng phải có ít nhất measures hoặc dimensions không rỗng."
         ),
         "input_schema": {
             "type": "object",
@@ -111,7 +117,13 @@ def build_query_tool(catalog: Catalog, candidates: dict[str, list[str]] | None =
                     "maximum": 1000,
                 },
             },
-            "required": ["measures"],
+            # Không khai "required": ["measures"] nữa — ràng buộc thật là
+            # "measures HOẶC dimensions phải có ít nhất 1", JSON Schema không
+            # diễn đạt gọn được kiểu ràng buộc này qua `required` (cần
+            # `anyOf`, phức tạp hoá schema cho nhiều provider function-
+            # calling). Validator (`app/nlu/types.py::CubeQuery`) enforce
+            # đúng ràng buộc này và trả lỗi rõ ràng qua repair loop nếu vi
+            # phạm — xem docs/04-ambiguous-question-handling.md.
         },
     }
 

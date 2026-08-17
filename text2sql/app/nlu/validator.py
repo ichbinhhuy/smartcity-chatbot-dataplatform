@@ -75,9 +75,23 @@ class QueryValidator:
             if self.catalog.get_measure(m) is None:
                 errors.append(f"Measure '{m}' không tồn tại. {self._suggest(m, names)}")
 
+    @staticmethod
+    def _target_cube(query: CubeQuery) -> str | None:
+        """Cube "chốt" của cả query — mọi measure/dimension/filter khác phải
+        cùng cube này. Ưu tiên suy từ measures[0]; nếu measures rỗng (query
+        dimension-only, vd đếm/liệt kê `districts` vốn không có measure nào —
+        xem docs/04-ambiguous-question-handling.md) thì suy từ dimensions[0]
+        thay thế. `CubeQuery` đã đảm bảo ít nhất 1 trong 2 không rỗng (xem
+        `_require_measures_or_dimensions` trong types.py)."""
+        if query.measures:
+            return query.measures[0].split(".")[0]
+        if query.dimensions:
+            return query.dimensions[0].split(".")[0]
+        return None
+
     def _validate_dimensions(self, query: CubeQuery, errors: list[str], notes: list[str]) -> None:
         names = set(self.catalog.dimension_names())
-        target_cube = query.measures[0].split(".")[0] if query.measures else None
+        target_cube = self._target_cube(query)
 
         valid_dims = []
         for d in query.dimensions:
@@ -96,7 +110,7 @@ class QueryValidator:
         measure_names = set(self.catalog.measure_names())
         all_member_names = dim_names | measure_names
         time_dim_names = set(self.catalog.time_dimension_names())
-        target_cube = query.measures[0].split(".")[0] if query.measures else None
+        target_cube = self._target_cube(query)
 
         valid_filters = []
         for f in query.filters:
@@ -162,15 +176,15 @@ class QueryValidator:
         self, query: CubeQuery, errors: list[str], notes: list[str]
     ) -> None:
         names = set(self.catalog.time_dimension_names())
-        target_cube = query.measures[0].split(".")[0] if query.measures else None
+        target_cube = self._target_cube(query)
 
         for td in query.timeDimensions:
             if isinstance(td.dateRange, list):
                 td.dateRange = td.dateRange[0] if td.dateRange else None
-            
+
             # Tự động đồng bộ timeDimension nếu LLM nhét nhầm timeDimension của Cube khác
             if target_cube and td.dimension.split(".")[0] != target_cube:
-                correct_dim = self._single_time_dimension_for(query.measures[0])
+                correct_dim = self._single_time_dimension_for(target_cube)
                 if correct_dim:
                     notes.append(f"Đã tự động sửa timeDimension từ '{td.dimension}' sang '{correct_dim}' để khớp với Cube '{target_cube}'.")
                     td.dimension = correct_dim
@@ -191,8 +205,13 @@ class QueryValidator:
                     f"Các giá trị cho phép: {', '.join(TIME_GRAINS)}."
                 )
 
-        if not query.timeDimensions and query.measures:
-            default_dim = self._single_time_dimension_for(query.measures[0])
+        # Chỉ auto-add default time dimension cho query CÓ measures — query
+        # dimension-only (vd đếm/liệt kê `districts`, vốn không có time
+        # dimension) không cần mốc thời gian mặc định; cố ý không mở rộng
+        # hành vi này ra ngoài phạm vi đã có để tránh áp đặt time filter
+        # không cần thiết lên câu hỏi kiểu "liệt kê X".
+        if not query.timeDimensions and query.measures and target_cube:
+            default_dim = self._single_time_dimension_for(target_cube)
             if default_dim is not None:
                 query.timeDimensions = [
                     CubeTimeDimension(dimension=default_dim, dateRange=self.settings.default_relative_period)
@@ -202,9 +221,8 @@ class QueryValidator:
                     f"{self.settings.default_relative_period}."
                 )
 
-    def _single_time_dimension_for(self, measure_name: str) -> str | None:
+    def _single_time_dimension_for(self, cube_name: str) -> str | None:
         """Tự suy ra time dimension mặc định của Cube."""
-        cube_name = measure_name.split(".", 1)[0]
         cube = self.catalog.cube(cube_name)
         if cube is None or not cube.time_dimensions:
             return None

@@ -289,6 +289,18 @@ class CatalogRetriever:
         # Chọn Top 1 hoặc Top 2 Cubes có điểm RRF cao nhất
         selected_cubes = [item[1]["cube_name"] for item in rrf_scores[:top_k_cubes]]
 
+        # Luôn bổ sung mọi cube "reference/dimension-only" (không có measure
+        # nào, vd `districts`) vào candidates bất kể điểm RRF. Macro-document
+        # của các cube này vốn thiệt thòi có hệ thống trong RAG scoring
+        # (không có phần mô tả measures nên "mỏng" hơn hẳn cube nghiệp vụ
+        # khác), trong khi chi phí đưa thêm gần như 0 (không measure để tốn
+        # token). Câu hỏi domain-agnostic kiểu "list các khu vực" cần cube
+        # dimension gốc này thay vì mượn `section_id` của 1 cube nghiệp vụ
+        # bất kỳ lọt được vào top-K — xem docs/04-ambiguous-question-handling.md.
+        for cube in self.catalog.cubes:
+            if not cube.measures and cube.name not in selected_cubes:
+                selected_cubes.append(cube.name)
+
         # FEED HẾT 100% CỘT CỦA CÁC CUBE ĐƯỢC CHỌN CHO LLM 70B!
         selected_measures: set[str] = set()
         selected_dimensions: set[str] = set()
@@ -370,6 +382,12 @@ class CatalogRetriever:
                 selected_measures.add(doc["field_name"])
             else:
                 selected_dimensions.add(doc["field_name"])
+
+        # Luôn bổ sung cube reference/dimension-only — xem ghi chú tương ứng
+        # trong _retrieve_cube_first().
+        for cube in self.catalog.cubes:
+            if not cube.measures:
+                selected_cubes.add(cube.name)
 
         for c_name in selected_cubes:
             cube = self.catalog.cube(c_name)

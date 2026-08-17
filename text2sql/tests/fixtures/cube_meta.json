@@ -353,27 +353,27 @@
       "dimensions": [
         {
           "name": "districts.id",
-          "title": "id",
+          "title": "Ma khu vuc",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh duy nhat cua phan khu (Can ho, Khu biet thu, TTTM)"
         },
         {
           "name": "districts.name",
-          "title": "name",
+          "title": "Ten khu vuc",
           "type": "string",
-          "description": ""
+          "description": "Ten day du cua phan khu trong du an do thi thong minh"
         },
         {
           "name": "districts.max_speed_limit",
-          "title": "max_speed_limit",
+          "title": "Toc do toi da cho phep (km/h)",
           "type": "number",
-          "description": ""
+          "description": "Toc do toi da luu thong duoc phep trong phan khu, tinh bang km/h"
         },
         {
           "name": "districts.total_parking_slots",
-          "title": "total_parking_slots",
+          "title": "Tong so cho do xe cua khu vuc",
           "type": "number",
-          "description": ""
+          "description": "Tong so cho do xe trong phan khu (dat tinh tu dim_sections, khong phai tu log)"
         }
       ]
     },
