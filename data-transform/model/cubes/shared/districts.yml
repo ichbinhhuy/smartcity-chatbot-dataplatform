@@ -2,6 +2,12 @@ cubes:
   - name: districts
     sql: "SELECT * FROM starrocks_gold.dim_sections"
 
+    measures:
+      - name: total_sections
+        title: "Tong so khu vuc"
+        description: "Tong so phan khu (section) hien co trong he thong do thi thong minh"
+        type: count
+
     dimensions:
       - name: id
         title: "Ma khu vuc"

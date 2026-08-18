@@ -110,6 +110,8 @@ services:
       - CUBEJS_API_SECRET=devsecret
       - CUBEJS_TIMEZONE=UTC
       - CUBEJS_PG_SQL_PORT=15432
+      - CUBEJS_SQL_USER=superset
+      - CUBEJS_SQL_PASSWORD=devsecret
     volumes:
       - ./model/cubes:/cube/conf/schema
       - ./cube.js:/cube/conf/cube.js
@@ -213,7 +215,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - SUPERSET_EMBED_URL=http://localhost:8088/superset/dashboard/1/?standalone=true
+      - SUPERSET_EMBED_URL=http://localhost:8088/superset/dashboard/2/?standalone=true
       - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
       - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
       - LANGFUSE_BASE_URL=${LANGFUSE_BASE_URL:-https://us.cloud.langfuse.com}
@@ -233,6 +235,45 @@ services:
     restart: unless-stopped
     mem_limit: 2g
 
+# ------------------------------------------------------------
+  # 10.1 SmartCity Web FE (FastAPI Chatbot & BI Dashboard) - Deploy
+  # ------------------------------------------------------------
+  web_main:
+    build:
+      context: ../text2sql
+      dockerfile: Dockerfile
+    container_name: smartcity_web_main
+    ports:
+      - "8001:8000"
+    environment:
+      - CUBE_API_URL=http://cube:4000/cubejs-api/v1
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - GROQ_API_KEY=${GROQ_API_KEY:-your_groq_api_key_here}
+      - NLU_MODEL=gpt-4o-mini
+      - NLG_MODEL=gpt-4o-mini
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - SUPERSET_EMBED_URL=http://localhost:8088/superset/dashboard/2/?standalone=true
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_BASE_URL=${LANGFUSE_BASE_URL:-https://us.cloud.langfuse.com}
+      - SESSION_STORE_BACKEND=${SESSION_STORE_BACKEND:-redis}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - SESSION_TTL_SECONDS=${SESSION_TTL_SECONDS:-1800}
+
+
+    volumes:
+      - ../text2sql/app:/app/app
+      - ../text2sql/semantic:/app/semantic
+      - ../text2sql/web:/app/web
+      - hf_cache:/root/.cache  # Cache model HuggingFace/FastEmbed, bền vững qua rebuild
+    depends_on:
+      - cube
+      - redis
+    restart: unless-stopped
+    mem_limit: 1g
+
   # ------------------------------------------------------------
   # 11. Apache Superset (BI Dashboard Platform)
   # ------------------------------------------------------------
@@ -248,7 +289,7 @@ services:
       - superset_data:/app/superset_home
       - ./superset_config.py:/app/pythonpath/superset_config.py
     restart: unless-stopped
-    mem_limit: 1g
+    mem_limit: 2g
 
   # ------------------------------------------------------------
   # 12. Qdrant Vector Database (Catalog Hybrid Retrieval)

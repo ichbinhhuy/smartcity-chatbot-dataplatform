@@ -8,6 +8,11 @@
         relationship: belongsTo
 
     measures:
+      - name: total_records
+        title: "Tong so ban ghi log"
+        description: "Tong so ban ghi cam bien cot den da ghi nhan trong ky. Moi ban ghi = 1 lan do 15 phut."
+        type: count
+
       - name: total_power_kwh
         title: "Tong dien nang tieu thu (kWh)"
         description: "Tong dien nang tieu thu cua tat ca cot den trong ky xem xet, tinh bang kWh"
