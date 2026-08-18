@@ -1,0 +1,847 @@
+{
+  "flowEncodingVersion": "1.0",
+  "flow": {
+    "identifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+    "name": "SmartCity_5_Streams_Ingestion",
+    "comments": "Complete 5-domain dataflow for Smart Urban Lakehouse",
+    "position": {
+      "x": 0.0,
+      "y": 0.0
+    },
+    "processGroups": [],
+    "processors": [
+      {
+        "identifier": "76026ab8-0e84-44f5-9c9e-42f3eb7fdae3",
+        "instanceIdentifier": "38f1f62a-6934-4fbd-a4b8-e34225775275",
+        "name": "GetFile_Traffic",
+        "type": "org.apache.nifi.processors.standard.GetFile",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 250.0,
+          "y": 60.0
+        },
+        "properties": {
+          "Keep Source File": "true",
+          "Minimum File Age": "0 sec",
+          "Polling Interval": "0 sec",
+          "Input Directory": "/opt/nifi/nifi-current/landing_zone/traffic",
+          "Batch Size": "10",
+          "Minimum File Size": "0 B",
+          "Ignore Hidden Files": "true",
+          "Recurse Subdirectories": "true",
+          "File Filter": "[a-zA-Z0-9_]+\\.json"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "0932c5d3-0f03-4d83-8ca8-2ebdf85b56a2",
+        "instanceIdentifier": "1209d182-46f0-4348-b974-60fe456d93a9",
+        "name": "PutDatabaseRecord_Traffic",
+        "type": "org.apache.nifi.processors.standard.PutDatabaseRecord",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 1050.0,
+          "y": 60.0
+        },
+        "properties": {
+          "put-db-record-allow-multiple-statements": "false",
+          "table-schema-cache-size": "100",
+          "put-db-record-quoted-table-identifiers": "false",
+          "put-db-record-unmatched-column-behavior": "Ignore Unmatched Columns",
+          "put-db-record-translate-field-names": "true",
+          "put-db-record-dcbp-service": "5089bfa7-6831-381e-ad61-f82a67601e14",
+          "put-db-record-query-timeout": "0 seconds",
+          "rollback-on-failure": "false",
+          "put-db-record-statement-type": "INSERT",
+          "db-type": "Generic",
+          "put-db-record-quoted-identifiers": "false",
+          "put-db-record-table-name": "bronze_traffic",
+          "put-db-record-unmatched-field-behavior": "Ignore Unmatched Fields",
+          "put-db-record-max-batch-size": "1000",
+          "put-db-record-record-reader": "3641610a-0b55-3ca7-bc80-2da5785e3081"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [
+          "success",
+          "failure",
+          "retry"
+        ],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "a93e211b-8d51-4fa5-b562-2c90685be91d",
+        "instanceIdentifier": "53fcc3f0-88b2-4055-b96a-7f928acb8a15",
+        "name": "JoltTransform_Traffic",
+        "type": "org.apache.nifi.processors.standard.JoltTransformJSON",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 650.0,
+          "y": 60.0
+        },
+        "properties": {
+          "jolt-spec": "{\"*\": {\"camera_meta\": {\"device_id\": \"[&2].device_id\", \"section_id\": \"[&2].section_id\"}, \"event_time\": \"[&1].event_time\", \"analytics\": {\"summary\": {\"id\": \"[&3].event_id\", \"vehicle_count\": \"[&3].vehicle_count\", \"avg_speed_kmh\": \"[&3].avg_speed_kmh\", \"overspeed_flag\": \"[&3].overspeed_flag\"}}}}",
+          "jolt-transform": "jolt-transform-shift",
+          "pretty_print": "false",
+          "Transform Cache Size": "1"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [
+          "failure"
+        ],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "363486ef-3dc6-4347-b607-8eee0d9e7e0b",
+        "instanceIdentifier": "280a8855-629c-4834-bce0-242e10381af0",
+        "name": "GetFile_Parking",
+        "type": "org.apache.nifi.processors.standard.GetFile",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 250.0,
+          "y": 320.0
+        },
+        "properties": {
+          "Keep Source File": "true",
+          "Minimum File Age": "0 sec",
+          "Polling Interval": "0 sec",
+          "Input Directory": "/opt/nifi/nifi-current/landing_zone/parking",
+          "Batch Size": "10",
+          "Minimum File Size": "0 B",
+          "Ignore Hidden Files": "true",
+          "Recurse Subdirectories": "true",
+          "File Filter": "[a-zA-Z0-9_]+\\.json"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "6184ae76-7cfa-4168-bba9-cd680a0ddb25",
+        "instanceIdentifier": "1f55fb58-a88c-457d-9e5e-2d5ce76dc874",
+        "name": "PutDatabaseRecord_Parking",
+        "type": "org.apache.nifi.processors.standard.PutDatabaseRecord",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 1050.0,
+          "y": 320.0
+        },
+        "properties": {
+          "put-db-record-allow-multiple-statements": "false",
+          "table-schema-cache-size": "100",
+          "put-db-record-quoted-table-identifiers": "false",
+          "put-db-record-unmatched-column-behavior": "Ignore Unmatched Columns",
+          "put-db-record-translate-field-names": "true",
+          "put-db-record-dcbp-service": "5089bfa7-6831-381e-ad61-f82a67601e14",
+          "put-db-record-query-timeout": "0 seconds",
+          "rollback-on-failure": "false",
+          "put-db-record-statement-type": "INSERT",
+          "db-type": "Generic",
+          "put-db-record-quoted-identifiers": "false",
+          "put-db-record-table-name": "bronze_parking",
+          "put-db-record-unmatched-field-behavior": "Ignore Unmatched Fields",
+          "put-db-record-max-batch-size": "1000",
+          "put-db-record-record-reader": "3641610a-0b55-3ca7-bc80-2da5785e3081"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [
+          "success",
+          "failure",
+          "retry"
+        ],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "0a46b0a6-1474-4418-a0a8-321d9ba84f8b",
+        "instanceIdentifier": "1b3dc751-60ae-4ef3-8287-bdd6dccdac02",
+        "name": "JoltTransform_Parking",
+        "type": "org.apache.nifi.processors.standard.JoltTransformJSON",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 650.0,
+          "y": 320.0
+        },
+        "properties": {
+          "jolt-spec": "{\"*\": {\"id\": \"[&1].event_id\", \"gw\": \"[&1].gw_id\", \"section_id\": \"[&1].section_id\", \"recorded_at\": \"[&1].recorded_at\", \"tot\": \"[&1].slot_total\", \"occ\": \"[&1].occupied_slots\"}}",
+          "jolt-transform": "jolt-transform-shift",
+          "pretty_print": "false",
+          "Transform Cache Size": "1"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [
+          "failure"
+        ],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "2cb39d1f-8b3f-48d6-a6a0-20d8e2604158",
+        "instanceIdentifier": "67bc50f1-53dd-4f08-81ed-46b25e360ea7",
+        "name": "GetFile_Environment",
+        "type": "org.apache.nifi.processors.standard.GetFile",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 250.0,
+          "y": 580.0
+        },
+        "properties": {
+          "Keep Source File": "true",
+          "Minimum File Age": "0 sec",
+          "Polling Interval": "0 sec",
+          "Input Directory": "/opt/nifi/nifi-current/landing_zone/environment",
+          "Batch Size": "10",
+          "Minimum File Size": "0 B",
+          "Ignore Hidden Files": "true",
+          "Recurse Subdirectories": "true",
+          "File Filter": "[a-zA-Z0-9_]+\\.json"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "de22046a-b9d5-49d8-a204-5017fcfe800b",
+        "instanceIdentifier": "0d32f72d-20d8-4ec2-ae88-71145b9ef2b5",
+        "name": "PutDatabaseRecord_Environment",
+        "type": "org.apache.nifi.processors.standard.PutDatabaseRecord",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 1050.0,
+          "y": 580.0
+        },
+        "properties": {
+          "put-db-record-allow-multiple-statements": "false",
+          "table-schema-cache-size": "100",
+          "put-db-record-quoted-table-identifiers": "false",
+          "put-db-record-unmatched-column-behavior": "Ignore Unmatched Columns",
+          "put-db-record-translate-field-names": "true",
+          "put-db-record-dcbp-service": "5089bfa7-6831-381e-ad61-f82a67601e14",
+          "put-db-record-query-timeout": "0 seconds",
+          "rollback-on-failure": "false",
+          "put-db-record-statement-type": "INSERT",
+          "db-type": "Generic",
+          "put-db-record-quoted-identifiers": "false",
+          "put-db-record-table-name": "bronze_environment",
+          "put-db-record-unmatched-field-behavior": "Ignore Unmatched Fields",
+          "put-db-record-max-batch-size": "1000",
+          "put-db-record-record-reader": "3641610a-0b55-3ca7-bc80-2da5785e3081"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [
+          "success",
+          "failure",
+          "retry"
+        ],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "8fe4046c-5f50-49d2-8d1b-421c9e2f19a5",
+        "instanceIdentifier": "2bd4aaea-567c-45de-a974-1ab922d1b5b4",
+        "name": "JoltTransform_Environment",
+        "type": "org.apache.nifi.processors.standard.JoltTransformJSON",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 650.0,
+          "y": 580.0
+        },
+        "properties": {
+          "jolt-spec": "{\"*\": {\"section_id\": \"[&1].section_id\", \"timestamp\": \"[&1].recorded_at\", \"data\": {\"id\": \"[&2].event_id\", \"aqi\": \"[&2].aqi\", \"iaqi\": {\"pm25\": \"[&3].pm25\"}, \"noise\": {\"level_db\": \"[&3].noise_level_db\"}}}}",
+          "jolt-transform": "jolt-transform-shift",
+          "pretty_print": "false",
+          "Transform Cache Size": "1"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [
+          "failure"
+        ],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "157a0f3e-07f1-493d-91a5-c5962ae94b05",
+        "instanceIdentifier": "54b10bc0-3d87-45cb-b7dd-ae769806deae",
+        "name": "GetFile_Lighting",
+        "type": "org.apache.nifi.processors.standard.GetFile",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 250.0,
+          "y": 840.0
+        },
+        "properties": {
+          "Keep Source File": "true",
+          "Minimum File Age": "0 sec",
+          "Polling Interval": "0 sec",
+          "Input Directory": "/opt/nifi/nifi-current/landing_zone/lighting",
+          "Batch Size": "10",
+          "Minimum File Size": "0 B",
+          "Ignore Hidden Files": "true",
+          "Recurse Subdirectories": "true",
+          "File Filter": ".*"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "9f1e0e78-1281-44f3-8f27-dcee1f42e792",
+        "instanceIdentifier": "56e9e172-12ac-4648-9d15-09c67c73ccad",
+        "name": "PutDatabaseRecord_Lighting",
+        "type": "org.apache.nifi.processors.standard.PutDatabaseRecord",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 1050.0,
+          "y": 840.0
+        },
+        "properties": {
+          "put-db-record-allow-multiple-statements": "false",
+          "table-schema-cache-size": "100",
+          "put-db-record-quoted-table-identifiers": "false",
+          "put-db-record-unmatched-column-behavior": "Ignore Unmatched Columns",
+          "put-db-record-translate-field-names": "true",
+          "put-db-record-dcbp-service": "5089bfa7-6831-381e-ad61-f82a67601e14",
+          "put-db-record-query-timeout": "0 seconds",
+          "rollback-on-failure": "false",
+          "put-db-record-statement-type": "INSERT",
+          "db-type": "Generic",
+          "put-db-record-quoted-identifiers": "false",
+          "put-db-record-table-name": "bronze_lighting",
+          "put-db-record-unmatched-field-behavior": "Ignore Unmatched Fields",
+          "put-db-record-max-batch-size": "1000",
+          "put-db-record-record-reader": "3641610a-0b55-3ca7-bc80-2da5785e3081"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [
+          "success",
+          "failure",
+          "retry"
+        ],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "065b057e-624b-4cf7-9dbc-2b56bca0cfbb",
+        "instanceIdentifier": "6a8e5190-7c13-490a-b5ef-fe06309b72b6",
+        "name": "JoltTransform_Lighting",
+        "type": "org.apache.nifi.processors.standard.JoltTransformJSON",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 650.0,
+          "y": 840.0
+        },
+        "properties": {
+          "jolt-spec": "{\"*\": {\"id\": \"[&1].event_id\", \"section_id\": \"[&1].section_id\", \"pole_id\": \"[&1].pole_id\", \"recorded_at\": \"[&1].recorded_at\", \"power_kwh\": \"[&1].power_kwh\", \"status\": \"[&1].status\"}}",
+          "jolt-transform": "jolt-transform-shift",
+          "pretty_print": "false",
+          "Transform Cache Size": "1"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [
+          "failure"
+        ],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "15ee9096-e108-4403-9023-ac7016e01b5e",
+        "instanceIdentifier": "9346b70d-3330-4d8a-a4d2-8a391b160e6f",
+        "name": "GetFile_Incident",
+        "type": "org.apache.nifi.processors.standard.GetFile",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 250.0,
+          "y": 1100.0
+        },
+        "properties": {
+          "Keep Source File": "true",
+          "Minimum File Age": "0 sec",
+          "Polling Interval": "0 sec",
+          "Input Directory": "/opt/nifi/nifi-current/landing_zone/incident",
+          "Batch Size": "10",
+          "Minimum File Size": "0 B",
+          "Ignore Hidden Files": "true",
+          "Recurse Subdirectories": "true",
+          "File Filter": ".*\\.csv"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "7fe54810-dffa-47bb-aefe-62ce0943a049",
+        "instanceIdentifier": "a37ccbfb-a5fd-4571-af20-01413b8d8946",
+        "name": "PutDatabaseRecord_Incident",
+        "type": "org.apache.nifi.processors.standard.PutDatabaseRecord",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "position": {
+          "x": 1050.0,
+          "y": 1100.0
+        },
+        "properties": {
+          "put-db-record-allow-multiple-statements": "false",
+          "table-schema-cache-size": "100",
+          "put-db-record-quoted-table-identifiers": "false",
+          "put-db-record-unmatched-column-behavior": "Ignore Unmatched Columns",
+          "put-db-record-translate-field-names": "true",
+          "put-db-record-dcbp-service": "5089bfa7-6831-381e-ad61-f82a67601e14",
+          "put-db-record-query-timeout": "0 seconds",
+          "rollback-on-failure": "false",
+          "put-db-record-statement-type": "INSERT",
+          "db-type": "Generic",
+          "put-db-record-quoted-identifiers": "false",
+          "put-db-record-table-name": "bronze_incident",
+          "put-db-record-unmatched-field-behavior": "Ignore Unmatched Fields",
+          "put-db-record-max-batch-size": "1000",
+          "put-db-record-record-reader": "b70ee515-4b11-456e-8940-2abb7cb9c5e2"
+        },
+        "propertyDescriptors": {},
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runStatus": "STOPPED",
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [
+          "success",
+          "failure",
+          "retry"
+        ],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      }
+    ],
+    "connections": [
+      {
+        "identifier": "fcbe11a8-26a5-474e-b4b8-8af9b345ccaa",
+        "instanceIdentifier": "c6c057b7-2180-4df8-922f-32033b1e5bae",
+        "name": "traffic_GetFile_to_Jolt",
+        "source": {
+          "id": "76026ab8-0e84-44f5-9c9e-42f3eb7fdae3",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "GetFile_Traffic"
+        },
+        "destination": {
+          "id": "a93e211b-8d51-4fa5-b562-2c90685be91d",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "JoltTransform_Traffic"
+        },
+        "selectedRelationships": [
+          "success"
+        ],
+        "componentType": "CONNECTION",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "010d9120-05db-4204-8599-04801c75a9db",
+        "instanceIdentifier": "58cd2244-dc11-4d14-a5ee-4a9f725ea269",
+        "name": "traffic_Jolt_to_PutDB",
+        "source": {
+          "id": "a93e211b-8d51-4fa5-b562-2c90685be91d",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "JoltTransform_Traffic"
+        },
+        "destination": {
+          "id": "0932c5d3-0f03-4d83-8ca8-2ebdf85b56a2",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "PutDatabaseRecord_Traffic"
+        },
+        "selectedRelationships": [
+          "success"
+        ],
+        "componentType": "CONNECTION",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "85a59edb-f9d6-4ae8-9667-cc0a81641206",
+        "instanceIdentifier": "8adfc6bb-5153-4e76-acd9-c1330290dc12",
+        "name": "parking_GetFile_to_Jolt",
+        "source": {
+          "id": "363486ef-3dc6-4347-b607-8eee0d9e7e0b",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "GetFile_Parking"
+        },
+        "destination": {
+          "id": "0a46b0a6-1474-4418-a0a8-321d9ba84f8b",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "JoltTransform_Parking"
+        },
+        "selectedRelationships": [
+          "success"
+        ],
+        "componentType": "CONNECTION",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "fca2a393-2055-4ef8-812a-c21319855203",
+        "instanceIdentifier": "c100886d-edbe-4d9b-86c2-d399a1cd9e60",
+        "name": "parking_Jolt_to_PutDB",
+        "source": {
+          "id": "0a46b0a6-1474-4418-a0a8-321d9ba84f8b",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "JoltTransform_Parking"
+        },
+        "destination": {
+          "id": "6184ae76-7cfa-4168-bba9-cd680a0ddb25",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "PutDatabaseRecord_Parking"
+        },
+        "selectedRelationships": [
+          "success"
+        ],
+        "componentType": "CONNECTION",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "fcdbc50f-8989-41ae-9916-b0976ab444a6",
+        "instanceIdentifier": "9d8e8f46-3484-4047-b9ab-80f08af9499d",
+        "name": "environment_GetFile_to_Jolt",
+        "source": {
+          "id": "2cb39d1f-8b3f-48d6-a6a0-20d8e2604158",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "GetFile_Environment"
+        },
+        "destination": {
+          "id": "8fe4046c-5f50-49d2-8d1b-421c9e2f19a5",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "JoltTransform_Environment"
+        },
+        "selectedRelationships": [
+          "success"
+        ],
+        "componentType": "CONNECTION",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "4eadce22-ca21-4cfd-bb6e-d52d727aa487",
+        "instanceIdentifier": "ace10095-1376-4cfe-a2a1-a1566427c21d",
+        "name": "environment_Jolt_to_PutDB",
+        "source": {
+          "id": "8fe4046c-5f50-49d2-8d1b-421c9e2f19a5",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "JoltTransform_Environment"
+        },
+        "destination": {
+          "id": "de22046a-b9d5-49d8-a204-5017fcfe800b",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "PutDatabaseRecord_Environment"
+        },
+        "selectedRelationships": [
+          "success"
+        ],
+        "componentType": "CONNECTION",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "c6d699f1-05a7-48bc-8183-94b7c8b2806f",
+        "instanceIdentifier": "64b8ad62-a6ee-41d7-9c39-7c49be390ce7",
+        "name": "lighting_GetFile_to_Jolt",
+        "source": {
+          "id": "157a0f3e-07f1-493d-91a5-c5962ae94b05",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "GetFile_Lighting"
+        },
+        "destination": {
+          "id": "065b057e-624b-4cf7-9dbc-2b56bca0cfbb",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "JoltTransform_Lighting"
+        },
+        "selectedRelationships": [
+          "success"
+        ],
+        "componentType": "CONNECTION",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "9d8694d6-e6ca-49b0-8f44-c48c77f5af2a",
+        "instanceIdentifier": "80b4a0bc-f5cc-42fd-8dcd-0dd1ffc6f914",
+        "name": "lighting_Jolt_to_PutDB",
+        "source": {
+          "id": "065b057e-624b-4cf7-9dbc-2b56bca0cfbb",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "JoltTransform_Lighting"
+        },
+        "destination": {
+          "id": "9f1e0e78-1281-44f3-8f27-dcee1f42e792",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "PutDatabaseRecord_Lighting"
+        },
+        "selectedRelationships": [
+          "success"
+        ],
+        "componentType": "CONNECTION",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      },
+      {
+        "identifier": "9c9df745-1114-4a2d-8f49-d5725bb3cf7b",
+        "instanceIdentifier": "02b76d3f-8449-4cb2-a1ff-b9cc34c14148",
+        "name": "incident_GetFile_to_PutDB",
+        "source": {
+          "id": "15ee9096-e108-4403-9023-ac7016e01b5e",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "GetFile_Incident"
+        },
+        "destination": {
+          "id": "7fe54810-dffa-47bb-aefe-62ce0943a049",
+          "type": "PROCESSOR",
+          "groupId": "7701bfea-d4ac-4b33-9df6-654ede367dd2",
+          "name": "PutDatabaseRecord_Incident"
+        },
+        "selectedRelationships": [
+          "success"
+        ],
+        "componentType": "CONNECTION",
+        "groupIdentifier": "7701bfea-d4ac-4b33-9df6-654ede367dd2"
+      }
+    ],
+    "controllerServices": [
+      {
+        "identifier": "5089bfa7-6831-381e-ad61-f82a67601e14",
+        "instanceIdentifier": "ba0c3048-564a-4cf1-854c-cc27ed9c9572",
+        "name": "DBCPConnectionPool_StarRocks",
+        "type": "org.apache.nifi.dbcp.DBCPConnectionPool",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-dbcp-service-nar",
+          "version": "1.23.2"
+        },
+        "properties": {
+          "Database Connection URL": "jdbc:mariadb://starrocks:9030/starrocks_bronze",
+          "Database Driver Class Name": "org.mariadb.jdbc.Driver",
+          "database-driver-locations": "https://repo1.maven.org/maven2/org/mariadb/jdbc/mariadb-java-client/3.1.4/mariadb-java-client-3.1.4.jar",
+          "Database User": "root",
+          "Database Password": "",
+          "Max Total Connections": "8"
+        },
+        "state": "ENABLED",
+        "componentType": "CONTROLLER_SERVICE"
+      },
+      {
+        "identifier": "3641610a-0b55-3ca7-bc80-2da5785e3081",
+        "instanceIdentifier": "5c526029-2fd1-4bf1-9d02-f54c5e564430",
+        "name": "JsonTreeReader",
+        "type": "org.apache.nifi.json.JsonTreeReader",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-record-serialization-services-nar",
+          "version": "1.23.2"
+        },
+        "properties": {
+          "schema-access-strategy": "infer-schema"
+        },
+        "state": "ENABLED",
+        "componentType": "CONTROLLER_SERVICE"
+      },
+      {
+        "identifier": "b70ee515-4b11-456e-8940-2abb7cb9c5e2",
+        "instanceIdentifier": "9bbaae5f-352d-4e49-9171-93cbfe99509a",
+        "name": "CSVReader",
+        "type": "org.apache.nifi.csv.CSVReader",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-record-serialization-services-nar",
+          "version": "1.23.2"
+        },
+        "properties": {
+          "schema-access-strategy": "infer-schema",
+          "First Line Is Header": "true",
+          "Value Separator": ","
+        },
+        "state": "ENABLED",
+        "componentType": "CONTROLLER_SERVICE"
+      }
+    ],
+    "inputPorts": [],
+    "outputPorts": [],
+    "labels": [],
+    "funnels": [],
+    "remoteProcessGroups": []
+  }
+}

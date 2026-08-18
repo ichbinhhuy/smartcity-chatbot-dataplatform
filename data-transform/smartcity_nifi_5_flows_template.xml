@@ -1,0 +1,541 @@
+<?xml version="1.0" ?>
+<template encoding-version="1.3">
+  <description>SmartCity Lakehouse 5-Stream Ingestion Template</description>
+  <name>SmartCity_5_Streams_Template</name>
+  <snippet>
+    <processors>
+      <id>c0311f6d-0ea4-45a4-85ef-31d5fdffc947</id>
+      <name>GetFile_Traffic</name>
+      <type>org.apache.nifi.processors.standard.GetFile</type>
+      <state>STOPPED</state>
+      <position>
+        <x>300.0</x>
+        <y>50.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>Input Directory</key>
+            <value>/opt/nifi/nifi-current/landing_zone/traffic</value>
+          </entry>
+          <entry>
+            <key>File Filter</key>
+            <value>[a-zA-Z0-9_]+\.json</value>
+          </entry>
+          <entry>
+            <key>Keep Source File</key>
+            <value>true</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <processors>
+      <id>954a97ac-dc7a-4ac6-90b1-8804cef17ab5</id>
+      <name>PutDatabaseRecord_Traffic</name>
+      <type>org.apache.nifi.processors.standard.PutDatabaseRecord</type>
+      <state>STOPPED</state>
+      <position>
+        <x>1100.0</x>
+        <y>50.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>put-db-record-table-name</key>
+            <value>bronze_traffic</value>
+          </entry>
+          <entry>
+            <key>put-db-record-statement-type</key>
+            <value>INSERT</value>
+          </entry>
+          <entry>
+            <key>put-db-record-unmatched-column-behavior</key>
+            <value>Ignore Unmatched Columns</value>
+          </entry>
+          <entry>
+            <key>put-db-record-translate-field-names</key>
+            <value>true</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <processors>
+      <id>34c95b09-0810-4e24-9856-45b1ffeddafd</id>
+      <name>JoltTransform_Traffic</name>
+      <type>org.apache.nifi.processors.standard.JoltTransformJSON</type>
+      <state>STOPPED</state>
+      <position>
+        <x>700.0</x>
+        <y>50.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>jolt-spec</key>
+            <value>{
+  &quot;*&quot;: {
+    &quot;camera_meta&quot;: {
+      &quot;device_id&quot;: &quot;[&amp;2].device_id&quot;,
+      &quot;section_id&quot;: &quot;[&amp;2].section_id&quot;
+    },
+    &quot;event_time&quot;: &quot;[&amp;1].event_time&quot;,
+    &quot;analytics&quot;: {
+      &quot;summary&quot;: {
+        &quot;id&quot;: &quot;[&amp;3].event_id&quot;,
+        &quot;vehicle_count&quot;: &quot;[&amp;3].vehicle_count&quot;,
+        &quot;avg_speed_kmh&quot;: &quot;[&amp;3].avg_speed_kmh&quot;,
+        &quot;overspeed_flag&quot;: &quot;[&amp;3].overspeed_flag&quot;
+      }
+    }
+  }
+}</value>
+          </entry>
+          <entry>
+            <key>jolt-transform</key>
+            <value>jolt-transform-shift</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <connections>
+      <id>3f7e7cae-11b1-4b6d-9b9e-6deacdff8d8f</id>
+      <name>traffic_get_to_jolt</name>
+      <source>
+        <id>c0311f6d-0ea4-45a4-85ef-31d5fdffc947</id>
+        <type>PROCESSOR</type>
+      </source>
+      <destination>
+        <id>34c95b09-0810-4e24-9856-45b1ffeddafd</id>
+        <type>PROCESSOR</type>
+      </destination>
+      <selectedRelationships>success</selectedRelationships>
+    </connections>
+    <connections>
+      <id>91d855ca-ca54-424d-8561-437c694627f9</id>
+      <name>traffic_jolt_to_putdb</name>
+      <source>
+        <id>34c95b09-0810-4e24-9856-45b1ffeddafd</id>
+        <type>PROCESSOR</type>
+      </source>
+      <destination>
+        <id>954a97ac-dc7a-4ac6-90b1-8804cef17ab5</id>
+        <type>PROCESSOR</type>
+      </destination>
+      <selectedRelationships>success</selectedRelationships>
+    </connections>
+    <processors>
+      <id>15c17de2-b3f9-4bcb-bad4-88b3bd38df6a</id>
+      <name>GetFile_Parking</name>
+      <type>org.apache.nifi.processors.standard.GetFile</type>
+      <state>STOPPED</state>
+      <position>
+        <x>300.0</x>
+        <y>310.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>Input Directory</key>
+            <value>/opt/nifi/nifi-current/landing_zone/parking</value>
+          </entry>
+          <entry>
+            <key>File Filter</key>
+            <value>[a-zA-Z0-9_]+\.json</value>
+          </entry>
+          <entry>
+            <key>Keep Source File</key>
+            <value>true</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <processors>
+      <id>c953e111-7865-4d96-9a77-2155bd895c6e</id>
+      <name>PutDatabaseRecord_Parking</name>
+      <type>org.apache.nifi.processors.standard.PutDatabaseRecord</type>
+      <state>STOPPED</state>
+      <position>
+        <x>1100.0</x>
+        <y>310.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>put-db-record-table-name</key>
+            <value>bronze_parking</value>
+          </entry>
+          <entry>
+            <key>put-db-record-statement-type</key>
+            <value>INSERT</value>
+          </entry>
+          <entry>
+            <key>put-db-record-unmatched-column-behavior</key>
+            <value>Ignore Unmatched Columns</value>
+          </entry>
+          <entry>
+            <key>put-db-record-translate-field-names</key>
+            <value>true</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <processors>
+      <id>38b783b9-c576-4bbf-957b-a925fd9cadc8</id>
+      <name>JoltTransform_Parking</name>
+      <type>org.apache.nifi.processors.standard.JoltTransformJSON</type>
+      <state>STOPPED</state>
+      <position>
+        <x>700.0</x>
+        <y>310.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>jolt-spec</key>
+            <value>{
+  &quot;*&quot;: {
+    &quot;id&quot;: &quot;[&amp;1].event_id&quot;,
+    &quot;gw&quot;: &quot;[&amp;1].gw_id&quot;,
+    &quot;section_id&quot;: &quot;[&amp;1].section_id&quot;,
+    &quot;recorded_at&quot;: &quot;[&amp;1].recorded_at&quot;,
+    &quot;tot&quot;: &quot;[&amp;1].slot_total&quot;,
+    &quot;occ&quot;: &quot;[&amp;1].occupied_slots&quot;
+  }
+}</value>
+          </entry>
+          <entry>
+            <key>jolt-transform</key>
+            <value>jolt-transform-shift</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <connections>
+      <id>0e0633d6-5129-4ad8-9e0b-63c5e020ca34</id>
+      <name>parking_get_to_jolt</name>
+      <source>
+        <id>15c17de2-b3f9-4bcb-bad4-88b3bd38df6a</id>
+        <type>PROCESSOR</type>
+      </source>
+      <destination>
+        <id>38b783b9-c576-4bbf-957b-a925fd9cadc8</id>
+        <type>PROCESSOR</type>
+      </destination>
+      <selectedRelationships>success</selectedRelationships>
+    </connections>
+    <connections>
+      <id>bc4b9940-b0df-4b6f-a2e8-9783cefdcb04</id>
+      <name>parking_jolt_to_putdb</name>
+      <source>
+        <id>38b783b9-c576-4bbf-957b-a925fd9cadc8</id>
+        <type>PROCESSOR</type>
+      </source>
+      <destination>
+        <id>c953e111-7865-4d96-9a77-2155bd895c6e</id>
+        <type>PROCESSOR</type>
+      </destination>
+      <selectedRelationships>success</selectedRelationships>
+    </connections>
+    <processors>
+      <id>f342baa0-7729-4cf0-afca-da8024c98a1a</id>
+      <name>GetFile_Environment</name>
+      <type>org.apache.nifi.processors.standard.GetFile</type>
+      <state>STOPPED</state>
+      <position>
+        <x>300.0</x>
+        <y>570.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>Input Directory</key>
+            <value>/opt/nifi/nifi-current/landing_zone/environment</value>
+          </entry>
+          <entry>
+            <key>File Filter</key>
+            <value>[a-zA-Z0-9_]+\.json</value>
+          </entry>
+          <entry>
+            <key>Keep Source File</key>
+            <value>true</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <processors>
+      <id>d0db5aa0-c97c-43ea-ae53-cc7babb0577e</id>
+      <name>PutDatabaseRecord_Environment</name>
+      <type>org.apache.nifi.processors.standard.PutDatabaseRecord</type>
+      <state>STOPPED</state>
+      <position>
+        <x>1100.0</x>
+        <y>570.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>put-db-record-table-name</key>
+            <value>bronze_environment</value>
+          </entry>
+          <entry>
+            <key>put-db-record-statement-type</key>
+            <value>INSERT</value>
+          </entry>
+          <entry>
+            <key>put-db-record-unmatched-column-behavior</key>
+            <value>Ignore Unmatched Columns</value>
+          </entry>
+          <entry>
+            <key>put-db-record-translate-field-names</key>
+            <value>true</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <processors>
+      <id>110ddfdb-e3c4-4fd0-8ef1-d75018d37897</id>
+      <name>JoltTransform_Environment</name>
+      <type>org.apache.nifi.processors.standard.JoltTransformJSON</type>
+      <state>STOPPED</state>
+      <position>
+        <x>700.0</x>
+        <y>570.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>jolt-spec</key>
+            <value>{
+  &quot;*&quot;: {
+    &quot;section_id&quot;: &quot;[&amp;1].section_id&quot;,
+    &quot;timestamp&quot;: &quot;[&amp;1].recorded_at&quot;,
+    &quot;data&quot;: {
+      &quot;id&quot;: &quot;[&amp;2].event_id&quot;,
+      &quot;aqi&quot;: &quot;[&amp;2].aqi&quot;,
+      &quot;iaqi&quot;: {
+        &quot;pm25&quot;: &quot;[&amp;3].pm25&quot;
+      },
+      &quot;noise&quot;: {
+        &quot;level_db&quot;: &quot;[&amp;3].noise_level_db&quot;
+      }
+    }
+  }
+}</value>
+          </entry>
+          <entry>
+            <key>jolt-transform</key>
+            <value>jolt-transform-shift</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <connections>
+      <id>71dabae7-0c46-4925-b229-956c1b744b52</id>
+      <name>environment_get_to_jolt</name>
+      <source>
+        <id>f342baa0-7729-4cf0-afca-da8024c98a1a</id>
+        <type>PROCESSOR</type>
+      </source>
+      <destination>
+        <id>110ddfdb-e3c4-4fd0-8ef1-d75018d37897</id>
+        <type>PROCESSOR</type>
+      </destination>
+      <selectedRelationships>success</selectedRelationships>
+    </connections>
+    <connections>
+      <id>ce7974dd-d6c8-4cd2-ab68-b36fa3bf28fd</id>
+      <name>environment_jolt_to_putdb</name>
+      <source>
+        <id>110ddfdb-e3c4-4fd0-8ef1-d75018d37897</id>
+        <type>PROCESSOR</type>
+      </source>
+      <destination>
+        <id>d0db5aa0-c97c-43ea-ae53-cc7babb0577e</id>
+        <type>PROCESSOR</type>
+      </destination>
+      <selectedRelationships>success</selectedRelationships>
+    </connections>
+    <processors>
+      <id>77e2c644-e27f-4791-aa99-c2639d588cb5</id>
+      <name>GetFile_Lighting</name>
+      <type>org.apache.nifi.processors.standard.GetFile</type>
+      <state>STOPPED</state>
+      <position>
+        <x>300.0</x>
+        <y>830.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>Input Directory</key>
+            <value>/opt/nifi/nifi-current/landing_zone/lighting</value>
+          </entry>
+          <entry>
+            <key>File Filter</key>
+            <value>.*</value>
+          </entry>
+          <entry>
+            <key>Keep Source File</key>
+            <value>true</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <processors>
+      <id>cf469440-c424-4281-b2b9-132bc59d2eca</id>
+      <name>PutDatabaseRecord_Lighting</name>
+      <type>org.apache.nifi.processors.standard.PutDatabaseRecord</type>
+      <state>STOPPED</state>
+      <position>
+        <x>1100.0</x>
+        <y>830.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>put-db-record-table-name</key>
+            <value>bronze_lighting</value>
+          </entry>
+          <entry>
+            <key>put-db-record-statement-type</key>
+            <value>INSERT</value>
+          </entry>
+          <entry>
+            <key>put-db-record-unmatched-column-behavior</key>
+            <value>Ignore Unmatched Columns</value>
+          </entry>
+          <entry>
+            <key>put-db-record-translate-field-names</key>
+            <value>true</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <processors>
+      <id>e28c268f-02c6-43fe-84af-c4ae1265b6e4</id>
+      <name>JoltTransform_Lighting</name>
+      <type>org.apache.nifi.processors.standard.JoltTransformJSON</type>
+      <state>STOPPED</state>
+      <position>
+        <x>700.0</x>
+        <y>830.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>jolt-spec</key>
+            <value>{
+  &quot;*&quot;: {
+    &quot;id&quot;: &quot;[&amp;1].event_id&quot;,
+    &quot;section_id&quot;: &quot;[&amp;1].section_id&quot;,
+    &quot;pole_id&quot;: &quot;[&amp;1].pole_id&quot;,
+    &quot;recorded_at&quot;: &quot;[&amp;1].recorded_at&quot;,
+    &quot;power_kwh&quot;: &quot;[&amp;1].power_kwh&quot;,
+    &quot;status&quot;: &quot;[&amp;1].status&quot;
+  }
+}</value>
+          </entry>
+          <entry>
+            <key>jolt-transform</key>
+            <value>jolt-transform-shift</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <connections>
+      <id>250c463e-8194-45fb-ac2e-46be97da7721</id>
+      <name>lighting_get_to_jolt</name>
+      <source>
+        <id>77e2c644-e27f-4791-aa99-c2639d588cb5</id>
+        <type>PROCESSOR</type>
+      </source>
+      <destination>
+        <id>e28c268f-02c6-43fe-84af-c4ae1265b6e4</id>
+        <type>PROCESSOR</type>
+      </destination>
+      <selectedRelationships>success</selectedRelationships>
+    </connections>
+    <connections>
+      <id>0817561c-0ef6-4742-91c0-97633fad4863</id>
+      <name>lighting_jolt_to_putdb</name>
+      <source>
+        <id>e28c268f-02c6-43fe-84af-c4ae1265b6e4</id>
+        <type>PROCESSOR</type>
+      </source>
+      <destination>
+        <id>cf469440-c424-4281-b2b9-132bc59d2eca</id>
+        <type>PROCESSOR</type>
+      </destination>
+      <selectedRelationships>success</selectedRelationships>
+    </connections>
+    <processors>
+      <id>328cb8fa-f1b3-481f-93e9-41af997b3b5a</id>
+      <name>GetFile_Incident</name>
+      <type>org.apache.nifi.processors.standard.GetFile</type>
+      <state>STOPPED</state>
+      <position>
+        <x>300.0</x>
+        <y>1090.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>Input Directory</key>
+            <value>/opt/nifi/nifi-current/landing_zone/incident</value>
+          </entry>
+          <entry>
+            <key>File Filter</key>
+            <value>.*\.csv</value>
+          </entry>
+          <entry>
+            <key>Keep Source File</key>
+            <value>true</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <processors>
+      <id>99d43284-96bb-411c-867b-432cbaa7197b</id>
+      <name>PutDatabaseRecord_Incident</name>
+      <type>org.apache.nifi.processors.standard.PutDatabaseRecord</type>
+      <state>STOPPED</state>
+      <position>
+        <x>1100.0</x>
+        <y>1090.0</y>
+      </position>
+      <config>
+        <properties>
+          <entry>
+            <key>put-db-record-table-name</key>
+            <value>bronze_incident</value>
+          </entry>
+          <entry>
+            <key>put-db-record-statement-type</key>
+            <value>INSERT</value>
+          </entry>
+          <entry>
+            <key>put-db-record-unmatched-column-behavior</key>
+            <value>Ignore Unmatched Columns</value>
+          </entry>
+          <entry>
+            <key>put-db-record-translate-field-names</key>
+            <value>true</value>
+          </entry>
+        </properties>
+      </config>
+    </processors>
+    <connections>
+      <id>5195d3d9-aa54-489d-b7c8-8355cc4495c9</id>
+      <name>incident_get_to_putdb</name>
+      <source>
+        <id>328cb8fa-f1b3-481f-93e9-41af997b3b5a</id>
+        <type>PROCESSOR</type>
+      </source>
+      <destination>
+        <id>99d43284-96bb-411c-867b-432cbaa7197b</id>
+        <type>PROCESSOR</type>
+      </destination>
+      <selectedRelationships>success</selectedRelationships>
+    </connections>
+  </snippet>
+</template>
