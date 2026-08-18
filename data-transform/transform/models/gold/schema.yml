@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: dim_sections
+    description: >
+      Master Data Dimension Table: Danh mục chiều phân đoạn đường và phân khu đô thị thông minh.
+    columns:
+      - name: section_id
+        description: "Mã định danh duy nhất của phân khu (section_1, section_2, section_3)"
+        tests:
+          - unique
+          - not_null
+      - name: section_name
+        description: "Tên đầy đủ của phân khu (Cổng chính - TTTM, Khu Căn hộ, Khu Biệt thự)"
+        tests:
+          - not_null
+      - name: max_speed_limit
+        description: "Tốc độ tối đa cho phép quy định tại phân khu (km/h)"
+        tests:
+          - not_null
+      - name: total_parking_slots
+        description: "Tổng số chỗ đỗ xe thiết kế quy hoạch của phân khu"
+        tests:
+          - not_null

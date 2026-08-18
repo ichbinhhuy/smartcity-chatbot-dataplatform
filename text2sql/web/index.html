@@ -518,15 +518,16 @@
       color: var(--text-muted);
     }
 
-    /* DAG GRAPH CONTAINER */
+    /* DAG GRAPH CONTAINER (LIGHT THEME) */
     .dag-container {
       position: relative;
       background: #F8FAFC;
       border: 1px solid var(--border-color);
       border-radius: 20px;
-      padding: 2.5rem 2rem;
-      min-height: 500px;
+      padding: 2rem 1.75rem;
+      min-height: 480px;
       overflow: hidden;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.02);
     }
 
     .svg-canvas {
@@ -540,9 +541,9 @@
     }
 
     .dag-grid-3col {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.9fr;
+      gap: 2.2rem;
       width: 100%;
       position: relative;
       z-index: 2;
@@ -551,31 +552,43 @@
     .dag-col {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      width: 28%;
-      min-width: 260px;
+      gap: 0.75rem;
+      min-width: 0;
     }
 
     .dag-nodes-wrap {
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
+      gap: 0.9rem;
       flex: 1;
     }
 
-    .dag-nodes-wrap.center-nodes {
-      justify-content: center;
-      padding-top: 1.8rem;
+    .gold-subgrid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 2rem;
+      flex: 1;
     }
 
+    .gold-subcol-facts {
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+    }
 
+    .gold-subcol-mart {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: stretch;
+    }
 
     .col-header {
       font-size: 0.88rem;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      padding: 8px 14px;
+      letter-spacing: 0.8px;
+      padding: 9px 14px;
       border-radius: 12px;
       margin-bottom: 8px;
       display: flex;
@@ -600,30 +613,34 @@
       color: var(--color-gold);
       background: var(--color-gold-bg);
       border: 1px solid var(--color-gold-border);
+      justify-content: center; /* Căn giữa tiêu đề Gold Layer */
+      text-align: center;
     }
 
-    /* MEDAL NODE BUTTONS */
+    /* MEDAL NODE BUTTONS - WHITE CARDS ENLARGED BY ~30% */
     .dbt-node-btn {
       background: #FFFFFF;
       border: 1px solid var(--border-color);
-      border-radius: 14px;
-      padding: 14px 18px;
+      border-radius: 12px;
+      padding: 12px 16px;
       color: #0F172A;
-      font-size: 0.88rem;
+      font-size: 0.86rem;
       font-weight: 600;
       font-family: var(--font-mono);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+      gap: 8px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
       position: relative;
+      white-space: nowrap;
     }
 
     .dbt-node-btn:hover {
-      transform: scale(1.03);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
     }
 
     /* 🥉 BRONZE NODE */
@@ -656,30 +673,35 @@
       border: 1px solid #FDE047;
     }
 
-    /* SELECTED MEDAL NODES GLOW */
+    /* SELECTED MEDAL NODES GLOW & BACKGROUND CHANGE ON CLICK */
     .dbt-node-btn.bronze.selected {
-      border-color: #D97706 !important;
       background: #FEF3C7 !important;
-      box-shadow: 0 0 25px rgba(217, 119, 6, 0.35) !important;
+      border-color: #D97706 !important;
+      color: #92400E !important;
+      box-shadow: 0 0 22px rgba(217, 119, 6, 0.4) !important;
     }
 
     .dbt-node-btn.silver.selected {
-      border-color: #64748B !important;
       background: #F1F5F9 !important;
-      box-shadow: 0 0 25px rgba(100, 116, 139, 0.35) !important;
+      border-color: #64748B !important;
+      color: #334155 !important;
+      box-shadow: 0 0 22px rgba(100, 116, 139, 0.4) !important;
     }
 
     .dbt-node-btn.gold.selected {
-      border-color: #EAB308 !important;
       background: #FEF9C3 !important;
-      box-shadow: 0 0 25px rgba(234, 179, 8, 0.45) !important;
+      border-color: #EAB308 !important;
+      color: #854D0E !important;
+      box-shadow: 0 0 22px rgba(234, 179, 8, 0.5) !important;
     }
 
     .node-tag {
-      font-size: 0.68rem;
+      font-size: 0.7rem;
       padding: 3px 8px;
       border-radius: 6px;
       font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     /* INLINE DETAILS PANEL BELOW DAG GRAPH */
@@ -976,14 +998,14 @@
         <div class="dag-container" id="dagContainer">
           <svg class="svg-canvas" id="svgCanvas">
             <defs>
-              <marker id="arrow-bronze" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#D97706"></path>
+              <marker id="arrow-bronze" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#D97706"></path>
               </marker>
-              <marker id="arrow-silver" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"></path>
+              <marker id="arrow-silver" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748B"></path>
               </marker>
-              <marker id="arrow-gold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#EAB308"></path>
+              <marker id="arrow-gold" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#EAB308"></path>
               </marker>
             </defs>
           </svg>
@@ -992,13 +1014,9 @@
             <!-- BRONZE COLUMN (ĐỒNG) -->
             <div class="dag-col">
               <div class="col-header bronze"><i class="fa-solid fa-award"></i> 🥉 Bronze Layer (Đồng)</div>
-              <div class="dag-nodes-wrap center-nodes">
+              <div class="dag-nodes-wrap">
                 <div id="node_bronze_environment" class="dbt-node-btn bronze" onclick="selectNode('bronze_environment')">
                   <span>bronze.bronze_environment</span>
-                  <span class="node-tag">table</span>
-                </div>
-                <div id="node_bronze_parking" class="dbt-node-btn bronze" onclick="selectNode('bronze_parking')">
-                  <span>bronze.bronze_parking</span>
                   <span class="node-tag">table</span>
                 </div>
                 <div id="node_bronze_incident" class="dbt-node-btn bronze" onclick="selectNode('bronze_incident')">
@@ -1007,6 +1025,10 @@
                 </div>
                 <div id="node_bronze_lighting" class="dbt-node-btn bronze" onclick="selectNode('bronze_lighting')">
                   <span>bronze.bronze_lighting</span>
+                  <span class="node-tag">table</span>
+                </div>
+                <div id="node_bronze_parking" class="dbt-node-btn bronze" onclick="selectNode('bronze_parking')">
+                  <span>bronze.bronze_parking</span>
                   <span class="node-tag">table</span>
                 </div>
                 <div id="node_bronze_traffic" class="dbt-node-btn bronze" onclick="selectNode('bronze_traffic')">
@@ -1019,13 +1041,9 @@
             <!-- SILVER COLUMN (BẠC) -->
             <div class="dag-col">
               <div class="col-header silver"><i class="fa-solid fa-award"></i> 🥈 Silver Layer (Bạc)</div>
-              <div class="dag-nodes-wrap center-nodes">
+              <div class="dag-nodes-wrap">
                 <div id="node_silver_environment" class="dbt-node-btn silver" onclick="selectNode('silver_environment')">
                   <span>silver_environment</span>
-                  <span class="node-tag">model</span>
-                </div>
-                <div id="node_silver_parking" class="dbt-node-btn silver" onclick="selectNode('silver_parking')">
-                  <span>silver_parking</span>
                   <span class="node-tag">model</span>
                 </div>
                 <div id="node_silver_incident" class="dbt-node-btn silver" onclick="selectNode('silver_incident')">
@@ -1036,6 +1054,10 @@
                   <span>silver_lighting</span>
                   <span class="node-tag">model</span>
                 </div>
+                <div id="node_silver_parking" class="dbt-node-btn silver" onclick="selectNode('silver_parking')">
+                  <span>silver_parking</span>
+                  <span class="node-tag">model</span>
+                </div>
                 <div id="node_silver_traffic" class="dbt-node-btn silver" onclick="selectNode('silver_traffic')">
                   <span>silver_traffic</span>
                   <span class="node-tag">model</span>
@@ -1043,37 +1065,44 @@
               </div>
             </div>
 
-            <!-- GOLD COLUMN (VÀNG) -->
-            <div class="dag-col">
+            <!-- GOLD COLUMN (VÀNG) - CỘT TO CHIA THÀNH 2 CỘT NHỎ -->
+            <div class="dag-col dag-col-gold">
               <div class="col-header gold"><i class="fa-solid fa-award"></i> 🥇 Gold Layer (Vàng)</div>
-              <div class="dag-nodes-wrap">
-                <div id="node_fact_environment" class="dbt-node-btn gold" onclick="selectNode('fact_environment')">
-                  <span>fact_environment</span>
-                  <span class="node-tag">fact</span>
+              <div class="gold-subgrid">
+                <!-- CỘT CON BÊN TRÁI: 5 FACT + DIM_SECTIONS Ở HÀNG CUỐI -->
+                <div class="gold-subcol-facts">
+                  <div id="node_fact_environment" class="dbt-node-btn gold" onclick="selectNode('fact_environment')">
+                    <span>fact_environment</span>
+                    <span class="node-tag">fact</span>
+                  </div>
+                  <div id="node_fact_incident" class="dbt-node-btn gold" onclick="selectNode('fact_incident')">
+                    <span>fact_incident</span>
+                    <span class="node-tag">fact</span>
+                  </div>
+                  <div id="node_fact_lighting" class="dbt-node-btn gold" onclick="selectNode('fact_lighting')">
+                    <span>fact_lighting</span>
+                    <span class="node-tag">fact</span>
+                  </div>
+                  <div id="node_fact_parking" class="dbt-node-btn gold" onclick="selectNode('fact_parking')">
+                    <span>fact_parking</span>
+                    <span class="node-tag">fact</span>
+                  </div>
+                  <div id="node_fact_traffic" class="dbt-node-btn gold" onclick="selectNode('fact_traffic')">
+                    <span>fact_traffic</span>
+                    <span class="node-tag">fact</span>
+                  </div>
+                  <div id="node_dim_sections" class="dbt-node-btn gold" onclick="selectNode('dim_sections')">
+                    <span>dim_sections</span>
+                    <span class="node-tag">dim</span>
+                  </div>
                 </div>
-                <div id="node_fact_parking" class="dbt-node-btn gold" onclick="selectNode('fact_parking')">
-                  <span>fact_parking</span>
-                  <span class="node-tag">fact</span>
-                </div>
-                <div id="node_gold_street_livability_daily" class="dbt-node-btn gold" onclick="selectNode('gold_street_livability_daily')">
-                  <span>gold_street_livability_daily</span>
-                  <span class="node-tag">mview</span>
-                </div>
-                <div id="node_fact_incident" class="dbt-node-btn gold" onclick="selectNode('fact_incident')">
-                  <span>fact_incident</span>
-                  <span class="node-tag">fact</span>
-                </div>
-                <div id="node_fact_lighting" class="dbt-node-btn gold" onclick="selectNode('fact_lighting')">
-                  <span>fact_lighting</span>
-                  <span class="node-tag">fact</span>
-                </div>
-                <div id="node_fact_traffic" class="dbt-node-btn gold" onclick="selectNode('fact_traffic')">
-                  <span>fact_traffic</span>
-                  <span class="node-tag">fact</span>
-                </div>
-                <div id="node_dim_sections" class="dbt-node-btn gold" onclick="selectNode('dim_sections')">
-                  <span>dim_sections</span>
-                  <span class="node-tag">dim</span>
+
+                <!-- CỘT CON BÊN PHẢI: LIVABILITY CĂN GIỮA DỌC -->
+                <div class="gold-subcol-mart">
+                  <div id="node_gold_street_livability_daily" class="dbt-node-btn gold mart-kpi" onclick="selectNode('gold_street_livability_daily')">
+                    <span>gold_street_livability_daily</span>
+                    <span class="node-tag">mview</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1166,36 +1195,44 @@
       }
     }
 
-    // DYNAMIC SVG DAG CONNECTOR ARROWS (MEDAL COLORS)
+    // DYNAMIC SVG DAG CONNECTOR ARROWS (DBT LINEAGE STYLE)
     function drawSvgLines() {
       const svg = document.getElementById('svgCanvas');
       const container = document.getElementById('dagContainer');
       if (!svg || !container) return;
 
       const containerRect = container.getBoundingClientRect();
-      
+      if (containerRect.width === 0 || containerRect.height === 0) return;
+
+      svg.setAttribute('viewBox', `0 0 ${containerRect.width} ${containerRect.height}`);
+      svg.setAttribute('width', containerRect.width);
+      svg.setAttribute('height', containerRect.height);
+
       const defs = svg.querySelector('defs');
       svg.innerHTML = '';
       if (defs) svg.appendChild(defs);
 
       const connections = [
+        // Bronze -> Silver
         ['bronze_environment', 'silver_environment', 'bronze'],
-        ['bronze_parking', 'silver_parking', 'bronze'],
         ['bronze_incident', 'silver_incident', 'bronze'],
         ['bronze_lighting', 'silver_lighting', 'bronze'],
+        ['bronze_parking', 'silver_parking', 'bronze'],
         ['bronze_traffic', 'silver_traffic', 'bronze'],
 
+        // Silver -> Fact Gold
         ['silver_environment', 'fact_environment', 'silver'],
-        ['silver_parking', 'fact_parking', 'silver'],
         ['silver_incident', 'fact_incident', 'silver'],
         ['silver_lighting', 'fact_lighting', 'silver'],
+        ['silver_parking', 'fact_parking', 'silver'],
         ['silver_traffic', 'fact_traffic', 'silver'],
 
-        ['silver_environment', 'gold_street_livability_daily', 'gold'],
-        ['silver_parking', 'gold_street_livability_daily', 'gold'],
-        ['silver_incident', 'gold_street_livability_daily', 'gold'],
-        ['silver_lighting', 'gold_street_livability_daily', 'gold'],
-        ['silver_traffic', 'gold_street_livability_daily', 'gold']
+        // Fact Gold -> Livability KPI
+        ['fact_environment', 'gold_street_livability_daily', 'gold'],
+        ['fact_incident', 'gold_street_livability_daily', 'gold'],
+        ['fact_lighting', 'gold_street_livability_daily', 'gold'],
+        ['fact_parking', 'gold_street_livability_daily', 'gold'],
+        ['fact_traffic', 'gold_street_livability_daily', 'gold']
       ];
 
       connections.forEach(([srcId, tgtId, layerType]) => {
@@ -1211,8 +1248,8 @@
         const x2 = tgtRect.left - containerRect.left;
         const y2 = tgtRect.top + tgtRect.height / 2 - containerRect.top;
 
-        const dx = (x2 - x1) / 2;
-        const pathD = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x1 + dx} ${y2}, ${x2} ${y2}`;
+        const dx = Math.max(20, (x2 - x1) * 0.5);
+        const pathD = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
 
         let strokeColor = '#64748B';
         let markerId = 'arrow-silver';
@@ -1229,6 +1266,7 @@
         path.setAttribute('d', pathD);
         path.setAttribute('stroke', strokeColor);
         path.setAttribute('stroke-width', '2');
+        path.setAttribute('stroke-opacity', '0.85');
         path.setAttribute('fill', 'none');
         path.setAttribute('marker-end', `url(#${markerId})`);
         svg.appendChild(path);
