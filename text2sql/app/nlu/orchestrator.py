@@ -19,8 +19,15 @@ from app.catalog.sample_values import SampleValues
 from app.config import Settings, settings as default_settings
 from app.llm.client import LLMClient
 from app.llm.types import LLMError
+from app.nlu.guardrails import check_deterministic_refusal, refusal_message
 from app.nlu.parser import parse_response
-from app.nlu.prompt import build_clarification_suggestions, build_runtime_context, build_system_prompt
+from app.nlu.prompt import (
+    build_clarification_suggestions,
+    build_field_ambiguity_hint,
+    build_runtime_context,
+    build_system_prompt,
+)
+from app.nlu.time_ambiguity import build_vague_time_hint
 from app.nlu.tool_schema import build_tools
 from app.nlu.types import NLUResult, NLUStatus
 from app.nlu.validator import QueryValidator
@@ -49,9 +56,33 @@ class NLUOrchestrator:
         history: list[dict[str, Any]] | None = None,
         today: date | None = None,
         langfuse_trace: Any = None,
+        prior_query: Any = None,
     ) -> NLUResult:
+        """`prior_query` (Bug 2, kế hoạch fix Phase 2): `CubeQuery`/dict của
+        lần QUERY thành công gần nhất trong session — truyền thẳng xuống
+        `QueryValidator.validate()` làm nguồn dự phòng tất định cho
+        `timeDimensions` bị bỏ trống. Caller (`app/server.py`) chịu trách
+        nhiệm đọc/ghi giá trị này từ session store; orchestrator không tự
+        quản lý session."""
         messages = list(history or [])
         messages.extend(self._build_user_turn(question, today))
+
+        # 0. Guardrail tất định (Bug 3, kế hoạch fix Phase 2) — chặn NGAY,
+        # trước cả RAG/LLM, cho 2 loại yêu cầu không nên phó mặc LLM tự phán
+        # đoán: phá hoại dữ liệu, rò rỉ credential/prompt injection. Benchmark
+        # thực tế (R04/R05) cho thấy tool `refuse_request` (Phase 1, dựa vào
+        # LLM) không đủ ổn định cho 2 loại này — xem app/nlu/guardrails.py.
+        deterministic_reason = check_deterministic_refusal(question)
+        if deterministic_reason is not None:
+            msg = refusal_message(deterministic_reason)
+            _append_assistant_message(messages, {"role": "assistant", "content": msg})
+            return NLUResult(
+                status=NLUStatus.REFUSAL,
+                message=msg,
+                refusal_reason=deterministic_reason,
+                errors=[f"deterministic_refusal: {deterministic_reason}"],
+                messages=messages,
+            )
 
         # 1. Retrieval Layer: Semantic Search Top-K candidates (K=5)
         rag_span = tracing.start_span(langfuse_trace, "rag_retrieval", input={"question": question})
@@ -79,6 +110,18 @@ class NLUOrchestrator:
                 messages=messages,
                 suggestions=[c.title for c in self.catalog.cubes],
             )
+
+        # 1.6. Tiêm hint mơ hồ CỤ THỂ-THEO-CÂU-HỎI (kế hoạch fix Yellow case,
+        # Bước 3+6) — KHÔNG sửa `_RULES` tĩnh, không hard-block, chỉ bổ trợ
+        # ngữ cảnh cho lượt hỏi hiện tại. `field_ambiguity` (mơ hồ cấp
+        # measure/dimension trong 1 cube, tính tất định ở retriever) và
+        # `vague_time_hint` (cụm từ thời gian mơ hồ có chủ ý, vd "lúc
+        # trước") độc lập nhau, có thể cùng xuất hiện hoặc riêng lẻ.
+        field_ambiguity = candidates.get("field_ambiguity")
+        hint_parts = [build_field_ambiguity_hint(field_ambiguity), build_vague_time_hint(question)]
+        hint = "\n\n".join(p for p in hint_parts if p)
+        if hint:
+            messages[-1]["content"] = f"{messages[-1]['content']}\n\n{hint}"
 
         # 2. Dynamic Tool Schema & System Prompt based on Top-K candidates
         system_prompt = build_system_prompt(self.catalog, candidates)
@@ -125,6 +168,7 @@ class NLUOrchestrator:
                 return NLUResult(
                     status=NLUStatus.REFUSAL,
                     message=parsed.text,
+                    refusal_reason=parsed.refusal_reason,
                     errors=[f"refusal: {parsed.refusal_reason}" if parsed.refusal_reason else "refusal"],
                     messages=messages,
                     usage=usage_total,
@@ -137,12 +181,14 @@ class NLUOrchestrator:
                     status=NLUStatus.CLARIFICATION,
                     message=parsed.text or "Bạn có thể nói rõ hơn về chỉ số bạn muốn xem không?",
                     messages=messages,
-                    suggestions=build_clarification_suggestions(self.catalog, candidates),
+                    suggestions=build_clarification_suggestions(
+                        self.catalog, candidates, field_ambiguity=field_ambiguity
+                    ),
                     usage=usage_total,
                 )
 
             last_raw = parsed.tool_input
-            result = self.validator.validate(parsed.tool_input or {})
+            result = self.validator.validate(parsed.tool_input or {}, prior_query=prior_query)
 
             if result.ok and result.query is not None:
                 return NLUResult(
@@ -165,6 +211,35 @@ class NLUOrchestrator:
             # Groq (OpenAI-compat) format:
             #   assistant: {role, content (str|null→""), tool_calls: [...]}
             #   tool:      {role:"tool", tool_call_id, content (str)}
+            #
+            # Nếu lỗi là "giá trị filter không xác định được trong hệ thống"
+            # (`SampleValues.resolve()` — 0 match hoặc ≥2 candidate tie, xem
+            # `validator.py::_resolve_filter_values`) thì KHÔNG có tham số nào
+            # để "tự sửa" — chỉ người dùng mới biết ý đúng. Chỉ thị mặc định
+            # "Hãy gọi lại duy nhất 1 tool call" ép model PHẢI gọi tool lần
+            # nữa, khiến nó không còn lựa chọn nào khác ngoài `refuse_request`
+            # (tool duy nhất còn lại) — sai design, vì `build_refuse_tool()`
+            # nói rõ KHÔNG dùng tool đó "chỉ để hỏi lại làm rõ 1 chi tiết còn
+            # thiếu". Verify bằng benchmark LLM thật (Bước 7, Y06 "khu trung
+            # tâm"): trước fix này, model trả `status=refusal` dù nội dung
+            # message đã đúng 100% (liệt kê đúng 3 khu vực hợp lệ) — chỉ SAI
+            # Ở CHỖ chọn nhầm tool, khiến history không được lưu (REFUSAL
+            # không nằm trong `_SAVE_STATUSES`, xem `server.py`) và không thể
+            # tiếp tục hội thoại nhiều lượt cho case này. Mở thêm lối thoát
+            # "trả lời bằng text thường" CHỈ khi lỗi này xuất hiện — các lỗi
+            # tham số khác (sai định dạng ngày, tên field...) vẫn ép retry
+            # tool như cũ vì thực sự có thể tự sửa được.
+            unresolved_filter_value = any(
+                "không xác định được chính xác trong hệ thống" in e for e in result.errors
+            )
+            retry_instruction = (
+                "\nGiá trị filter không xác định được trong hệ thống và KHÔNG có tham số nào có thể "
+                "tự sửa đúng (không phải lỗi định dạng) — CHỈ người dùng mới biết ý đúng. TRẢ LỜI "
+                "BẰNG TEXT THƯỜNG (không gọi tool) để hỏi lại người dùng, liệt kê rõ các giá trị hợp "
+                "lệ đã nêu ở trên. KHÔNG dùng tool refuse_request cho trường hợp này."
+                if unresolved_filter_value
+                else "\nHãy gọi lại duy nhất 1 tool call với tham số đã sửa."
+            )
             raw = parsed.raw_assistant_content
             tool_call_id = parsed.tool_call_id or "call_1"
             if isinstance(raw, dict) and raw.get("tool_calls"):
@@ -177,7 +252,7 @@ class NLUOrchestrator:
                         "content": (
                             "Tham số không hợp lệ:\n- "
                             + "\n- ".join(result.errors)
-                            + "\nHãy gọi lại duy nhất 1 tool call với tham số đã sửa."
+                            + retry_instruction
                         ),
                     })
             else:
@@ -199,7 +274,7 @@ class NLUOrchestrator:
                     "content": (
                         "Tham số không hợp lệ:\n- "
                         + "\n- ".join(result.errors)
-                        + "\nHãy gọi lại tool với tham số đã sửa."
+                        + retry_instruction
                     ),
                 })
 

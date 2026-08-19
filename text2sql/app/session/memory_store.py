@@ -20,6 +20,7 @@ class InMemorySessionStore:
         self._default_ttl = ttl_seconds
         self._data: dict[str, tuple[list[dict[str, Any]], float]] = {}
         self._streaks: dict[str, tuple[int, float]] = {}
+        self._last_query: dict[str, tuple[dict[str, Any], float]] = {}
         # Starlette chạy route handler (def, không async def) trong threadpool
         # -> dict này có thể bị nhiều request đụng vào đồng thời.
         self._lock = threading.Lock()
@@ -49,6 +50,7 @@ class InMemorySessionStore:
         with self._lock:
             self._data.pop(session_id, None)
             self._streaks.pop(session_id, None)
+            self._last_query.pop(session_id, None)
 
     def get_clarification_streak(self, session_id: str) -> int:
         with self._lock:
@@ -70,3 +72,24 @@ class InMemorySessionStore:
         ttl = ttl_seconds if ttl_seconds is not None else self._default_ttl
         with self._lock:
             self._streaks[session_id] = (streak, time.time() + ttl)
+
+    def get_last_query_context(self, session_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            entry = self._last_query.get(session_id)
+            if entry is None:
+                return None
+            query, expires_at = entry
+            if time.time() >= expires_at:
+                del self._last_query[session_id]
+                return None
+            return dict(query)
+
+    def set_last_query_context(
+        self,
+        session_id: str,
+        query: dict[str, Any],
+        ttl_seconds: int | None = None,
+    ) -> None:
+        ttl = ttl_seconds if ttl_seconds is not None else self._default_ttl
+        with self._lock:
+            self._last_query[session_id] = (dict(query), time.time() + ttl)

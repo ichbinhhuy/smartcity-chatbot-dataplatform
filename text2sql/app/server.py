@@ -560,6 +560,102 @@ def _persist_turn(session_id: str, nlu_result) -> None:
     get_session_store().save(session_id, trimmed, ttl_seconds=settings.session_ttl_seconds)
 
 
+def _resolve_prior_query(session_id: str) -> dict[str, Any] | None:
+    """Bug 2 (kế hoạch fix Phase 2): lấy `CubeQuery` (dạng dict) của lần QUERY
+    thành công gần nhất trong session — dùng làm nguồn dự phòng tất định cho
+    `timeDimensions` khi lượt hiện tại bỏ trống (xem
+    app/nlu/validator.py::validate)."""
+    return get_session_store().get_last_query_context(session_id)
+
+
+def _persist_prior_query(session_id: str, nlu_result) -> None:
+    """Lưu lại query của lượt này làm ngữ cảnh cho lượt SAU — chỉ khi status
+    QUERY (có `nlu_result.query` hợp lệ); CLARIFICATION/REFUSAL/ERROR/INVALID
+    không ghi đè, để lượt query thành công gần nhất trước đó vẫn còn hiệu lực
+    (vd hỏi lại giữa chừng không được xoá mất ngữ cảnh thời gian đã có)."""
+    if nlu_result.status != NLUStatus.QUERY or not nlu_result.query:
+        return
+    get_session_store().set_last_query_context(
+        session_id,
+        nlu_result.query.model_dump(mode="json"),
+        ttl_seconds=settings.session_ttl_seconds,
+    )
+
+
+# --------------------------------------------------------------------------
+# NLG prompt/message builder — dùng chung cho /api/chat và /api/chat/stream
+# (trước đây 2 khối này lặp gần như y hệt nhau, xem Bug 4 trong kế hoạch fix).
+# --------------------------------------------------------------------------
+
+_NLG_SYSTEM_PROMPT = """\
+Bạn là Chuyên viên Phân tích Dữ liệu Đô thị Thông minh.
+Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả lời theo phong cách báo cáo quản trị chuyên nghiệp, chính xác và ngắn gọn bằng tiếng Việt.
+
+# Quy tắc định dạng báo cáo (Formatting Rules):
+1. **Tuyệt đối KHÔNG dùng icon hay emoji** (không sử dụng bất kỳ biểu tượng cảm xúc hay icon đồ họa nào).
+2. **Không dùng bảng markdown** (để tránh lỗi dính dòng trên giao diện). Hãy trình bày thông tin dưới dạng danh sách gạch đầu dòng rõ ràng, phân cấp mạch lạc và có xuống dòng đầy đủ.
+3. **Cấu trúc báo cáo**:
+   - **Tóm tắt tổng quan**: 1 câu trả lời trực tiếp nội dung chính.
+   - **Số liệu chi tiết**: CHỈ trình bày số liệu của đúng khu vực/đối tượng được hỏi trong câu hỏi. TUYỆT ĐỐI KHÔNG tự ý thêm dữ liệu của các khu vực/đối tượng khác không được đề cập.
+4. **Định dạng số**: Làm tròn các con số thập phân đến 2 chữ số (ví dụ: 65.63, 63.90).
+5. **TUYỆT ĐỐI KHÔNG nhận xét cảm tính**: Không được đưa ra bất kỳ đánh giá chủ quan nào (như 'khá tốt', 'tương đối cao', 'đáng lo ngại'). Chỉ báo cáo số liệu thuần túy từ JSON. Nếu không có bảng tiêu chuẩn ngưỡng nào được cung cấp trong yêu cầu, BỎ HOÀN TOÀN phần nhận xét.
+"""
+
+_TRUNCATED_NOTE = "\n\n*(Lưu ý: câu trả lời có thể đã bị cắt do vượt giới hạn độ dài.)*"
+
+
+def _relabel_and_cap_rows(
+    data: list[dict[str, Any]],
+    query,
+    max_rows: int,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Đổi key thời gian ISO dài dòng (vd `street_incidents.timestamp_start`)
+    thành nhãn ngắn `thoi_diem`, và nếu số dòng vượt `max_rows` thì cắt bớt +
+    tóm tắt min/max/avg cho các trường số thay vì dump nguyên mảng thô vào
+    prompt — dữ liệu quá dài dễ khiến model tự bịa format từng dòng hoặc lặp
+    vô hạn (Bug 4). Trả về (rows đã xử lý, ghi chú tóm tắt nếu có cắt bớt).
+    """
+    time_dim_names = {td.dimension for td in (getattr(query, "timeDimensions", None) or [])}
+
+    def _relabel(row: dict[str, Any]) -> dict[str, Any]:
+        return {("thoi_diem" if k in time_dim_names else k): v for k, v in row.items()}
+
+    relabeled = [_relabel(r) for r in data]
+
+    if len(relabeled) <= max_rows:
+        return relabeled, None
+
+    numeric_keys = [
+        k
+        for k, v in relabeled[0].items()
+        if isinstance(v, (int, float)) and not isinstance(v, bool)
+    ]
+    summary: dict[str, dict[str, float]] = {}
+    for k in numeric_keys:
+        values = [r[k] for r in relabeled if isinstance(r.get(k), (int, float)) and not isinstance(r.get(k), bool)]
+        if values:
+            summary[k] = {"min": min(values), "max": max(values), "avg": round(sum(values) / len(values), 2)}
+
+    note = (
+        f"Dữ liệu gốc có {len(relabeled)} dòng — chỉ đính kèm {max_rows} dòng đầu tiên bên dưới để "
+        f"tránh vượt giới hạn prompt. Số liệu tổng hợp min/max/avg trên TOÀN BỘ {len(relabeled)} dòng "
+        f"(dùng số này khi câu hỏi cần giá trị tổng thể, KHÔNG suy ra từ {max_rows} dòng mẫu bên dưới): "
+        f"{json.dumps(summary, ensure_ascii=False)}"
+    )
+    return relabeled[:max_rows], note
+
+
+def _build_nlg_messages(question: str, cube_data: dict[str, Any], query) -> list[dict[str, Any]]:
+    """Dựng `messages` cho lượt NLG — dùng chung cho `/api/chat` và `/api/chat/stream`."""
+    rows, note = _relabel_and_cap_rows(cube_data.get("data", []), query, settings.nlg_max_rows_in_prompt)
+    prompt_payload = dict(cube_data)
+    prompt_payload["data"] = rows
+    content = f"Câu hỏi: {question}\nKết quả JSON từ Cube:\n{json.dumps(prompt_payload, ensure_ascii=False)}"
+    if note:
+        content += f"\n\n[Ghi chú hệ thống - không phải dữ liệu từ Cube]: {note}"
+    return [{"role": "user", "content": content}]
+
+
 @app.post("/api/chat")
 def api_chat(req: ChatRequest):
     """Xử lý câu hỏi tự nhiên qua LLM (provider chọn qua LLM_PROVIDER) + Cube Core."""
@@ -590,9 +686,13 @@ def api_chat(req: ChatRequest):
         retriever=retriever,
     )
 
-    nlu_result = orchestrator.interpret(req.question, history=history, langfuse_trace=lf_trace)
+    prior_query = _resolve_prior_query(session_id)
+    nlu_result = orchestrator.interpret(
+        req.question, history=history, langfuse_trace=lf_trace, prior_query=prior_query
+    )
     _apply_clarification_cap(session_id, nlu_result, catalog)
     _persist_turn(session_id, nlu_result)
+    _persist_prior_query(session_id, nlu_result)
 
     if nlu_result.status == NLUStatus.CLARIFICATION:
         res = {
@@ -602,6 +702,18 @@ def api_chat(req: ChatRequest):
             "data": [],
             "session_id": session_id,
             "suggestions": nlu_result.suggestions,
+        }
+        lf_trace.update(output=res)
+        return res
+
+    if nlu_result.status == NLUStatus.REFUSAL:
+        res = {
+            "status": "refusal",
+            "answer": nlu_result.message,
+            "refusal_reason": nlu_result.refusal_reason,
+            "query": None,
+            "data": [],
+            "session_id": session_id,
         }
         lf_trace.update(output=res)
         return res
@@ -638,22 +750,8 @@ def api_chat(req: ChatRequest):
         return res
 
     # NLG Phase
-    nlg_prompt = """\
-Bạn là Chuyên viên Phân tích Dữ liệu Đô thị Thông minh.
-Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả lời theo phong cách báo cáo quản trị chuyên nghiệp, chính xác và ngắn gọn bằng tiếng Việt.
-
-# Quy tắc định dạng báo cáo (Formatting Rules):
-1. **Tuyệt đối KHÔNG dùng icon hay emoji** (không sử dụng bất kỳ biểu tượng cảm xúc hay icon đồ họa nào).
-2. **Không dùng bảng markdown** (để tránh lỗi dính dòng trên giao diện). Hãy trình bày thông tin dưới dạng danh sách gạch đầu dòng rõ ràng, phân cấp mạch lạc và có xuống dòng đầy đủ.
-3. **Cấu trúc báo cáo**:
-   - **Tóm tắt tổng quan**: 1 câu trả lời trực tiếp nội dung chính.
-   - **Số liệu chi tiết**: CHỈ trình bày số liệu của đúng khu vực/đối tượng được hỏi trong câu hỏi. TUYỆT ĐỐI KHÔNG tự ý thêm dữ liệu của các khu vực/đối tượng khác không được đề cập.
-4. **Định dạng số**: Làm tròn các con số thập phân đến 2 chữ số (ví dụ: 65.63, 63.90).
-5. **TUYỆT ĐỐI KHÔNG nhận xét cảm tính**: Không được đưa ra bất kỳ đánh giá chủ quan nào (như 'khá tốt', 'tương đối cao', 'đáng lo ngại'). Chỉ báo cáo số liệu thuần túy từ JSON. Nếu không có bảng tiêu chuẩn ngưỡng nào được cung cấp trong yêu cầu, BỎ HOÀN TOÀN phần nhận xét.
-"""
-    nlg_messages = [
-        {"role": "user", "content": f"Câu hỏi: {req.question}\nKết quả JSON từ Cube:\n{json.dumps(cube_data, ensure_ascii=False)}"}
-    ]
+    nlg_prompt = _NLG_SYSTEM_PROMPT
+    nlg_messages = _build_nlg_messages(req.question, cube_data, nlu_result.query)
 
     nlg_gen = tracing.start_generation(
         lf_trace,
@@ -664,7 +762,9 @@ Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả
     try:
         nlg_res = llm.generate_answer(nlg_prompt, nlg_messages)
         final_answer = nlg_res.text
-        nlg_gen.end(output={"text": final_answer})
+        if nlg_res.finish_reason == "length":
+            final_answer += _TRUNCATED_NOTE
+        nlg_gen.end(output={"text": final_answer, "finish_reason": nlg_res.finish_reason})
     except Exception as exc:
         final_answer = f"Đã có dữ liệu từ Cube Core nhưng lỗi tóm tắt NLG: {exc}"
         nlg_gen.end(output={"error": str(exc)}, level="ERROR")
@@ -710,9 +810,13 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
 
     def event_generator():
         session_id, history = _resolve_session(req.session_id)
-        nlu_result = orchestrator.interpret(req.question, history=history, langfuse_trace=lf_trace)
+        prior_query = _resolve_prior_query(session_id)
+        nlu_result = orchestrator.interpret(
+            req.question, history=history, langfuse_trace=lf_trace, prior_query=prior_query
+        )
         _apply_clarification_cap(session_id, nlu_result, catalog)
         _persist_turn(session_id, nlu_result)
+        _persist_prior_query(session_id, nlu_result)
 
         if nlu_result.status == NLUStatus.CLARIFICATION:
             payload = {
@@ -722,6 +826,20 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
                 "query": None,
                 "session_id": session_id,
                 "suggestions": nlu_result.suggestions,
+            }
+            lf_trace.update(output=payload)
+            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+            yield "data: {\"type\": \"done\"}\n\n"
+            return
+
+        if nlu_result.status == NLUStatus.REFUSAL:
+            payload = {
+                "type": "meta",
+                "status": "refusal",
+                "answer": nlu_result.message,
+                "refusal_reason": nlu_result.refusal_reason,
+                "query": None,
+                "session_id": session_id,
             }
             lf_trace.update(output=payload)
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
@@ -774,22 +892,8 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
         yield f"data: {json.dumps(meta_payload, ensure_ascii=False)}\n\n"
 
         # Stream NLG text tokens
-        nlg_prompt = """\
-Bạn là Chuyên viên Phân tích Dữ liệu Đô thị Thông minh.
-Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả lời theo phong cách báo cáo quản trị chuyên nghiệp, chính xác và ngắn gọn bằng tiếng Việt.
-
-# Quy tắc định dạng báo cáo (Formatting Rules):
-1. **Tuyệt đối KHÔNG dùng icon hay emoji** (không sử dụng bất kỳ biểu tượng cảm xúc hay icon đồ họa nào).
-2. **Không dùng bảng markdown** (để tránh lỗi dính dòng trên giao diện). Hãy trình bày thông tin dưới dạng danh sách gạch đầu dòng rõ ràng, phân cấp mạch lạc và có xuống dòng đầy đủ.
-3. **Cấu trúc báo cáo**:
-   - **Tóm tắt tổng quan**: 1 câu trả lời trực tiếp nội dung chính.
-   - **Số liệu chi tiết**: CHỈ trình bày số liệu của đúng khu vực/đối tượng được hỏi trong câu hỏi. TUYỆT ĐỐI KHÔNG tự ý thêm dữ liệu của các khu vực/đối tượng khác không được đề cập.
-4. **Định dạng số**: Làm tròn các con số thập phân đến 2 chữ số (ví dụ: 65.63, 63.90).
-5. **TUYỆT ĐỐI KHÔNG nhận xét cảm tính**: Không được đưa ra bất kỳ đánh giá chủ quan nào (như 'khá tốt', 'tương đối cao', 'đáng lo ngại'). Chỉ báo cáo số liệu thuần túy từ JSON. Nếu không có bảng tiêu chuẩn ngưỡng nào được cung cấp trong yêu cầu, BỎ HOÀN TOÀN phần nhận xét.
-"""
-        nlg_messages = [
-            {"role": "user", "content": f"Câu hỏi: {req.question}\nKết quả JSON từ Cube:\n{json.dumps(cube_data, ensure_ascii=False)}"}
-        ]
+        nlg_prompt = _NLG_SYSTEM_PROMPT
+        nlg_messages = _build_nlg_messages(req.question, cube_data, nlu_result.query)
 
         nlg_gen = tracing.start_generation(
             lf_trace,
@@ -798,6 +902,7 @@ Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả
             input={"prompt": nlg_prompt, "messages": nlg_messages},
         )
         full_text = []
+        finish_reason = None
 
         try:
             if hasattr(llm, "generate_answer_stream"):
@@ -805,14 +910,21 @@ Hãy dựa vào kết quả JSON từ hệ thống để tổng hợp câu trả
                     full_text.append(chunk)
                     token_payload = {"type": "token", "content": chunk}
                     yield f"data: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
+                finish_reason = getattr(llm, "last_finish_reason", None)
             else:
                 res = llm.generate_answer(nlg_prompt, nlg_messages)
                 full_text.append(res.text)
                 token_payload = {"type": "token", "content": res.text}
                 yield f"data: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
+                finish_reason = res.finish_reason
+
+            if finish_reason == "length":
+                full_text.append(_TRUNCATED_NOTE)
+                note_payload = {"type": "token", "content": _TRUNCATED_NOTE}
+                yield f"data: {json.dumps(note_payload, ensure_ascii=False)}\n\n"
 
             final_ans = "".join(full_text)
-            nlg_gen.end(output={"text": final_ans})
+            nlg_gen.end(output={"text": final_ans, "finish_reason": finish_reason})
             lf_trace.update(output={"status": "success", "answer": final_ans})
         except Exception as exc:
             nlg_gen.end(output={"error": str(exc)}, level="ERROR")

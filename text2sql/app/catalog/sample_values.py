@@ -37,11 +37,15 @@ class SampleValues:
     def resolve(self, member: str, value: str) -> tuple[str, bool, list[str] | None]:
         """Trả về (giá trị đã quy đổi, có thay đổi hay không, candidates mơ hồ).
 
-        Phần tử thứ 3 khác `None` khi fuzzy-match tìm được ≥2 giá trị gần
-        giống nhau (chênh lệch ratio < `_AMBIGUITY_GAP`) — trường hợp đó
-        KHÔNG tự đoán (`value` trả về giữ nguyên bản gốc), để caller
+        Phần tử thứ 3 khác `None` trong 2 trường hợp: (1) fuzzy-match tìm
+        được ≥2 giá trị gần giống nhau (chênh lệch ratio < `_AMBIGUITY_GAP`),
+        hoặc (2) KHÔNG tìm được giá trị nào đủ gần trong domain hữu hạn đã
+        biết (vd "khu trung tâm" không khớp tên phân khu thật nào — kế hoạch
+        fix Yellow case, Nhóm 2/Y06). Cả 2 trường hợp đều KHÔNG tự đoán
+        (`value` trả về giữ nguyên bản gốc), để caller
         (`QueryValidator._resolve_filter_values`) đẩy thành lỗi validation
-        và trigger repair loop/clarification thay vì âm thầm chọn sai.
+        và trigger repair loop/clarification thay vì âm thầm chọn sai hoặc
+        âm thầm chấp nhận giá trị không tồn tại.
         """
         val_lower = value.strip().lower()
         alias_map = {
@@ -174,25 +178,31 @@ class SampleValues:
             "đầy": "CRITICAL",
             "kín chỗ": "CRITICAL",
 
-            # Loại sự cố (street_incidents.incident_type)
-            "tai nạn": "ACCIDENT",
-            "tai nan": "ACCIDENT",
-            "va chạm": "ACCIDENT",
-            "va cham": "ACCIDENT",
-            "công trình": "ROAD_WORK",
-            "cong trinh": "ROAD_WORK",
-            "sửa đường": "ROAD_WORK",
-            "thi công": "ROAD_WORK",
-            "ngập lụt": "FLOODING",
-            "ngap lut": "FLOODING",
-            "ngập": "FLOODING",
-            "ngap": "FLOODING",
-            "lụt": "FLOODING",
-            "kẹt xe": "CONGESTION",
-            "ket xe": "CONGESTION",
-            "ùn tắc": "CONGESTION",
-            "un tac": "CONGESTION",
-            "tắc đường": "CONGESTION",
+            # Loại sự cố (street_incidents.incident_type) — giá trị thật lấy
+            # từ data-transform/mock_engine/generator.py:98, chốt chặn bởi
+            # data-transform/transform/models/silver/silver_incident.sql —
+            # chỉ có 3 giá trị, đều chữ thường: accident/road_work/
+            # traffic_light_failure. KHÔNG có "flooding"/"congestion" — đây
+            # từng là 2 category bịa, gây filter khớp 0 dòng (Bug 6).
+            "tai nạn": "accident",
+            "tai nan": "accident",
+            "va chạm": "accident",
+            "va cham": "accident",
+            "công trình": "road_work",
+            "cong trinh": "road_work",
+            "sửa đường": "road_work",
+            "sua duong": "road_work",
+            "thi công": "road_work",
+            "thi cong": "road_work",
+            "đèn tín hiệu": "traffic_light_failure",
+            "den tin hieu": "traffic_light_failure",
+            "hỏng đèn giao thông": "traffic_light_failure",
+            "hong den giao thong": "traffic_light_failure",
+            "hỏng đèn tín hiệu": "traffic_light_failure",
+            "hong den tin hieu": "traffic_light_failure",
+            "đèn giao thông hỏng": "traffic_light_failure",
+            "lỗi đèn tín hiệu": "traffic_light_failure",
+            "loi den tin hieu": "traffic_light_failure",
 
             # Mức độ sự cố (street_incidents.severity)
             "nhẹ": "MINOR",
@@ -223,7 +233,14 @@ class SampleValues:
         lower_to_original = {a.lower(): a for a in allowed}
         close = difflib.get_close_matches(val_lower, list(lower_to_original.keys()), n=3, cutoff=0.6)
         if not close:
-            return value, False, None
+            # Không khớp CANDIDATE nào trong domain hữu hạn đã biết (khác
+            # nhánh "≥2 candidate tie" bên dưới) — vd "khu trung tâm" không
+            # gần giống bất kỳ tên phân khu thật nào (ratio cao nhất chỉ
+            # 0.560, dưới cutoff 0.6). Trước đây âm thầm pass-qua giá trị
+            # này, khiến Cube query chạy với filter khớp 0 dòng mà không
+            # cảnh báo gì (kế hoạch fix Yellow case, Nhóm 2/Y06) — giờ báo
+            # lỗi để validator đẩy vào repair loop, cùng cơ chế với nhánh tie.
+            return value, False, list(allowed)[:3]
 
         if len(close) >= 2:
             top_ratio = difflib.SequenceMatcher(None, val_lower, close[0]).ratio()

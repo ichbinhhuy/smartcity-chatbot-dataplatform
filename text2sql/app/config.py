@@ -105,5 +105,16 @@ class Settings:
         default_factory=lambda: _env_int("MAX_CLARIFICATION_STREAK", 2)
     )
 
+    # NLG (tóm tắt câu trả lời từ kết quả Cube) — giới hạn max_tokens gửi cho
+    # provider để tránh model lặp vô hạn/generate quá dài khi dữ liệu nhiều
+    # dòng (xem app/llm/openai_compatible.py).
+    nlg_max_tokens: int = field(default_factory=lambda: _env_int("NLG_MAX_TOKENS", 1200))
+    # Số dòng `data` tối đa nhét thẳng vào prompt NLG — vượt ngưỡng này thì
+    # cắt bớt + tóm tắt min/max/avg thay vì dump nguyên mảng thô, buộc model
+    # tự bịa format từng dòng (xem app/server.py, Bug 4 trong kế hoạch fix).
+    nlg_max_rows_in_prompt: int = field(
+        default_factory=lambda: _env_int("NLG_MAX_ROWS_IN_PROMPT", 60)
+    )
+
 
 settings = Settings()

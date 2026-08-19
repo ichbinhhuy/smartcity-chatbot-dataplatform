@@ -20,6 +20,20 @@ class CubeMetaError(RuntimeError):
     """Không lấy được hoặc không đọc được catalog từ Cube Meta API."""
 
 
+# Cube danh mục/tham chiếu gốc (vd `districts` cho khu vực) — LLM luôn ưu
+# tiên dimension của các cube này cho câu hỏi về chính đối tượng, không gắn
+# domain cụ thể (xem app/nlu/prompt.py Rule 13). Lẽ ra nên đánh dấu ngay
+# trong YAML schema qua field `meta` chuẩn của Cube (single source of
+# truth), nhưng Cube.js v0.34.0 đang chạy trong repo này KHÔNG chấp nhận
+# `meta` ở cấp cube — thử thêm `meta: {is_reference: true}` vào
+# districts.yml làm sập compile TOÀN BỘ schema (lỗi "(meta = [object
+# Object]) is not allowed", mọi cube khác báo "doesn't exist" theo). Vì
+# vậy tạm dùng constant Python này làm nguồn thay thế — CHẤP NHẬN việc có
+# 2 chỗ phải đồng bộ tay (constant này + tên cube thật trong YAML), khác
+# với thiết kế gốc, cho tới khi nâng cấp Cube.js lên bản hỗ trợ `meta`.
+_REFERENCE_CUBE_NAMES = {"districts"}
+
+
 def fetch_catalog(base_url: str, token: str | None = None, timeout: float = 10.0) -> Catalog:
     headers = {"Authorization": token} if token else {}
     try:
@@ -50,6 +64,7 @@ def parse_catalog(payload: dict[str, Any]) -> Catalog:
                 measures=measures,
                 dimensions=dimensions,
                 time_dimensions=time_dimensions,
+                is_reference=raw_cube["name"] in _REFERENCE_CUBE_NAMES,
             )
         )
     return Catalog(cubes=cubes)

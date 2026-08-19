@@ -468,6 +468,17 @@
       border-left: 3px solid var(--accent-blue);
     }
 
+    /* status=refusal (xem Bug 3, kế hoạch fix): phân biệt trực quan với
+       clarification — đây là từ chối hẳn, không phải hỏi lại để làm rõ. */
+    .message.bot.refusal .msg-bubble {
+      border-left: 3px solid var(--accent-rose);
+      background: rgba(225, 29, 72, 0.06);
+    }
+
+    .message.bot.refusal .avatar {
+      background: var(--accent-rose);
+    }
+
     /* TAB 2: BI DASHBOARD LIGHT */
     .superset-frame-wrap {
       display: block;
@@ -1375,8 +1386,9 @@
 
     function createBotMessageElement(answer, queryObj, status, suggestions) {
       const msg = document.createElement('div');
-      msg.className = 'message bot' + (status === 'clarification' ? ' clarification' : '');
-      const icon = status === 'clarification' ? 'fa-circle-question' : 'fa-brain';
+      const statusClass = status === 'clarification' ? ' clarification' : (status === 'refusal' ? ' refusal' : '');
+      msg.className = 'message bot' + statusClass;
+      const icon = status === 'clarification' ? 'fa-circle-question' : (status === 'refusal' ? 'fa-ban' : 'fa-brain');
 
       let accordionHtml = '';
       if (queryObj) {

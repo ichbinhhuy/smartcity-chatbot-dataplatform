@@ -47,7 +47,17 @@ class QueryValidator:
 
     # ------------------------------------------------------------------ public
 
-    def validate(self, raw: dict[str, Any]) -> ValidationResult:
+    def validate(
+        self,
+        raw: dict[str, Any],
+        prior_query: CubeQuery | dict[str, Any] | None = None,
+    ) -> ValidationResult:
+        """`prior_query` (Bug 2, kế hoạch fix Phase 2): `CubeQuery` (hoặc dict
+        tương đương) của lần QUERY thành công gần nhất trong session — dùng
+        làm nguồn dự phòng tất định cho `timeDimensions` khi lượt hiện tại bỏ
+        trống, thay vì chỉ trông chờ prompt Rule 8(a) (Phase 1) khiến model tự
+        nhớ lại mốc thời gian lượt trước (benchmark thực tế cho thấy vẫn
+        không đủ ổn định — xem README.md Y01/Y03)."""
         errors: list[str] = []
         notes: list[str] = []
 
@@ -56,10 +66,21 @@ class QueryValidator:
         except Exception as exc:  # pydantic ValidationError
             return ValidationResult(ok=False, errors=[f"Tham số tool không đúng cấu trúc: {exc}"])
 
+        prior: CubeQuery | None = None
+        if prior_query is not None:
+            try:
+                prior = (
+                    prior_query
+                    if isinstance(prior_query, CubeQuery)
+                    else CubeQuery.model_validate(prior_query)
+                )
+            except Exception:
+                prior = None  # prior_query hỏng/lỗi thời -> bỏ qua êm, không chặn lượt hiện tại
+
         self._validate_measures(query, errors)
         self._validate_dimensions(query, errors, notes)
         self._validate_filters(query, errors, notes)
-        self._validate_time_dimensions(query, errors, notes)
+        self._validate_time_dimensions(query, errors, notes, prior_query=prior)
         self._validate_order(query, errors)
         self._validate_limit(query, errors, notes)
 
@@ -151,9 +172,11 @@ class QueryValidator:
         """Đối chiếu giá trị filter với Alias Map hoặc sample_values.yaml.
 
         Nếu `resolve()` báo giá trị mơ hồ (≥2 candidate gần giống nhau,
-        không đủ tin cậy để tự đoán) -> đẩy thành lỗi validation, chảy vào
-        repair loop có sẵn ở orchestrator.py (model được yêu cầu gọi lại tool
-        với tham số đã sửa) thay vì âm thầm chọn 1 giá trị có thể sai. Xem
+        không đủ tin cậy để tự đoán — HOẶC không khớp candidate nào cả trong
+        domain hữu hạn đã biết, vd tên khu vực không tồn tại) -> đẩy thành
+        lỗi validation, chảy vào repair loop có sẵn ở orchestrator.py (model
+        được yêu cầu gọi lại tool với tham số đã sửa) thay vì âm thầm chọn 1
+        giá trị có thể sai hoặc âm thầm chấp nhận giá trị không tồn tại. Xem
         docs/04-ambiguous-question-handling.md case G / FIX-04.
         """
         resolved: list[str] = []
@@ -161,8 +184,8 @@ class QueryValidator:
             new_value, changed, ambiguous = self.sample_values.resolve(f.member, value)
             if ambiguous:
                 errors.append(
-                    f"Giá trị '{value}' của '{f.member}' khớp nhiều giá trị gần giống nhau "
-                    f"({', '.join(ambiguous)}) — không đủ tin cậy để tự chọn. "
+                    f"Giá trị '{value}' của '{f.member}' không xác định được chính xác trong hệ "
+                    f"thống (giá trị hợp lệ: {', '.join(ambiguous)}) — không đủ tin cậy để tự chọn. "
                     "Hãy nêu rõ giá trị bạn muốn lọc."
                 )
                 resolved.append(value)
@@ -173,12 +196,24 @@ class QueryValidator:
         f.values = resolved
 
     def _validate_time_dimensions(
-        self, query: CubeQuery, errors: list[str], notes: list[str]
+        self,
+        query: CubeQuery,
+        errors: list[str],
+        notes: list[str],
+        prior_query: CubeQuery | None = None,
     ) -> None:
         names = set(self.catalog.time_dimension_names())
         target_cube = self._target_cube(query)
 
         for td in query.timeDimensions:
+            # LƯU Ý (phát hiện trong lúc làm Bug 2, chưa fix — ngoài phạm vi):
+            # dòng dưới đây thu gọn dateRange dạng list [start, end] (định
+            # dạng hợp lệ của Cube REST API) về CHỈ phần tử đầu tiên, âm thầm
+            # bỏ mất ngày kết thúc. Hiếm khi lộ ra vì GPT-4o-mini thường trả
+            # range dạng chuỗi đơn "start/end" (xem ví dụ thật trong
+            # tools/G06...) thay vì mảng 2 phần tử — nhưng nếu model trả đúng
+            # dạng mảng, câu hỏi "tuần 21-28/7" có thể âm thầm chỉ còn tính
+            # đúng 1 ngày. Không sửa ở đây để tránh phạm vi ngoài Bug 2.
             if isinstance(td.dateRange, list):
                 td.dateRange = td.dateRange[0] if td.dateRange else None
 
@@ -213,13 +248,66 @@ class QueryValidator:
         if not query.timeDimensions and query.measures and target_cube:
             default_dim = self._single_time_dimension_for(target_cube)
             if default_dim is not None:
-                query.timeDimensions = [
-                    CubeTimeDimension(dimension=default_dim, dateRange=self.settings.default_relative_period)
-                ]
-                notes.append(
-                    f"Câu hỏi không nêu mốc thời gian nên hệ thống áp mặc định: "
-                    f"{self.settings.default_relative_period}."
+                # Bug 2: ưu tiên carry-forward timeDimension của lượt TRƯỚC
+                # trong cùng session nếu nó thuộc CÙNG cube — tín hiệu tất
+                # định, không phụ thuộc model có tự nhớ nhắc lại mốc thời gian
+                # hay không (xem docstring `validate()`). Chỉ áp dụng khi
+                # cùng cube: timeDimension của cube khác không có ý nghĩa gì
+                # với câu hỏi hiện tại.
+                prior_td = next(
+                    (
+                        td
+                        for td in (prior_query.timeDimensions if prior_query else [])
+                        if td.dimension == default_dim
+                    ),
+                    None,
                 )
+                if prior_td is not None:
+                    query.timeDimensions = [
+                        CubeTimeDimension(
+                            dimension=default_dim,
+                            dateRange=prior_td.dateRange,
+                            granularity=prior_td.granularity,
+                        )
+                    ]
+                    notes.append(
+                        f"Câu hỏi không nêu mốc thời gian nên hệ thống giữ nguyên khung thời gian "
+                        f"của lượt hỏi trước: {prior_td.dateRange}."
+                    )
+                else:
+                    query.timeDimensions = [
+                        CubeTimeDimension(dimension=default_dim, dateRange=self.settings.default_relative_period)
+                    ]
+                    notes.append(
+                        f"Câu hỏi không nêu mốc thời gian nên hệ thống áp mặc định: "
+                        f"{self.settings.default_relative_period}."
+                    )
+        elif query.timeDimensions and target_cube and prior_query:
+            # Bug 2 (mở rộng sau khi verify qua UI thật): trên thực tế model
+            # KHÔNG luôn để `timeDimensions` rỗng như Rule 8(b) kỳ vọng — nó
+            # thường TỰ ĐIỀN đúng giá trị mặc định toàn cục
+            # (`settings.default_relative_period`, vd "last 30 days") thay vì
+            # để trống cho hệ thống áp — bỏ qua hoàn toàn nhánh carry-forward
+            # ở trên (nhánh đó chỉ chạy khi `timeDimensions` rỗng). Coi
+            # trường hợp model tự điền ĐÚNG BẰNG giá trị mặc định toàn cục là
+            # tín hiệu "model không thực sự biết mốc thời gian" (trùng khớp
+            # tuyệt đối với default là đáng ngờ) — vẫn ưu tiên carry-forward
+            # nếu prior_query có giá trị khác, cụ thể hơn cho cùng dimension.
+            default_dim = self._single_time_dimension_for(target_cube)
+            for td in query.timeDimensions:
+                if td.dimension != default_dim:
+                    continue
+                if td.dateRange != self.settings.default_relative_period:
+                    continue  # model đưa giá trị cụ thể khác mặc định -> tôn trọng, không ghi đè
+                prior_td = next((p for p in prior_query.timeDimensions if p.dimension == td.dimension), None)
+                if prior_td is not None and prior_td.dateRange != td.dateRange:
+                    td.dateRange = prior_td.dateRange
+                    td.granularity = prior_td.granularity
+                    notes.append(
+                        f"Câu hỏi không nêu mốc thời gian nên hệ thống giữ nguyên khung thời gian "
+                        f"của lượt hỏi trước: {prior_td.dateRange} (thay vì mặc định '{self.settings.default_relative_period}' "
+                        f"model tự điền)."
+                    )
 
     def _single_time_dimension_for(self, cube_name: str) -> str | None:
         """Tự suy ra time dimension mặc định của Cube."""

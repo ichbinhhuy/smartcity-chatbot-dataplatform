@@ -16,6 +16,7 @@ import redis
 
 _KEY_PREFIX = "text2sql:session:"
 _STREAK_KEY_PREFIX = "text2sql:session:streak:"
+_LAST_QUERY_KEY_PREFIX = "text2sql:session:last_query:"
 
 
 class RedisSessionStore:
@@ -42,6 +43,10 @@ class RedisSessionStore:
     @staticmethod
     def _streak_key(session_id: str) -> str:
         return f"{_STREAK_KEY_PREFIX}{session_id}"
+
+    @staticmethod
+    def _last_query_key(session_id: str) -> str:
+        return f"{_LAST_QUERY_KEY_PREFIX}{session_id}"
 
     def get(self, session_id: str) -> list[dict[str, Any]]:
         try:
@@ -73,6 +78,7 @@ class RedisSessionStore:
         try:
             self._client.delete(self._key(session_id))
             self._client.delete(self._streak_key(session_id))
+            self._client.delete(self._last_query_key(session_id))
         except redis.exceptions.RedisError as exc:
             print(f"[RedisSessionStore] delete() thất bại: {exc} — session_id={session_id}.")
 
@@ -100,3 +106,29 @@ class RedisSessionStore:
             self._client.setex(self._streak_key(session_id), ttl, str(streak))
         except redis.exceptions.RedisError as exc:
             print(f"[RedisSessionStore] set_clarification_streak() thất bại: {exc} — session_id={session_id} không được lưu.")
+
+    def get_last_query_context(self, session_id: str) -> dict[str, Any] | None:
+        try:
+            raw = self._client.get(self._last_query_key(session_id))
+        except redis.exceptions.RedisError as exc:
+            print(f"[RedisSessionStore] get_last_query_context() thất bại: {exc} — fallback về None.")
+            return None
+        if raw is None:
+            return None
+        try:
+            return json.loads(raw)
+        except (TypeError, ValueError) as exc:
+            print(f"[RedisSessionStore] payload last_query hỏng cho session_id={session_id}: {exc} — fallback về None.")
+            return None
+
+    def set_last_query_context(
+        self,
+        session_id: str,
+        query: dict[str, Any],
+        ttl_seconds: int | None = None,
+    ) -> None:
+        ttl = ttl_seconds if ttl_seconds is not None else self._default_ttl
+        try:
+            self._client.setex(self._last_query_key(session_id), ttl, json.dumps(query, ensure_ascii=False))
+        except redis.exceptions.RedisError as exc:
+            print(f"[RedisSessionStore] set_last_query_context() thất bại: {exc} — session_id={session_id} không được lưu.")

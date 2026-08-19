@@ -99,6 +99,13 @@ class NLUResult(BaseModel):
     query: CubeQuery | None = None
     # Câu hỏi làm rõ / thông báo lỗi để hiển thị cho người dùng.
     message: str | None = None
+    # Loại lý do từ chối khi status=REFUSAL. 2 nguồn: (1) LLM tự gọi tool
+    # `refuse_request` — out_of_domain/external_data_unavailable/
+    # hallucination_forecast_request, xem app/nlu/tool_schema.py::build_refuse_tool();
+    # (2) guardrail tất định trước LLM (Bug 3) — destructive_instruction/
+    # credential_exfiltration/prompt_injection, xem app/nlu/guardrails.py.
+    # Tách riêng khỏi `errors` để FE dùng trực tiếp thay vì phải parse chuỗi lỗi.
+    refusal_reason: str | None = None
     errors: list[str] = Field(default_factory=list)
     # Tham số thô LLM trả về — giữ lại để log và debug prompt.
     raw_tool_input: dict[str, Any] | None = None

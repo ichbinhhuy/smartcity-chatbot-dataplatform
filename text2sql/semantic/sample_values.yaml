@@ -1,3 +1,13 @@
+districts.id:
+  - "Khu biet thu"
+  - "Can ho"
+  - "TTTM"
+
+districts.name:
+  - "Khu biet thu"
+  - "Can ho"
+  - "TTTM"
+
 traffic_flow.section_id:
   - "Khu biet thu"
   - "Can ho"
@@ -54,10 +64,9 @@ smart_parking.occupancy_level:
   - "CRITICAL"
 
 street_incidents.incident_type:
-  - "ACCIDENT"
-  - "ROAD_WORK"
-  - "FLOODING"
-  - "CONGESTION"
+  - "accident"
+  - "road_work"
+  - "traffic_light_failure"
 
 street_incidents.severity:
   - "MINOR"
