@@ -342,6 +342,40 @@
         },
         "data": [],
         "answer": "- **Tóm tắt tổng quan**: Không có dữ liệu về thời gian xử lý trung bình của sự cố ngập lụt (FLOOD) trong khoảng thời gian đã chỉ định.\n\n- **Số liệu chi tiết**: \n  - Không có số liệu được ghi nhận cho sự cố ngập lụt trong khoảng thời gian từ 19/07/2026 đến 17/08/2026."
+      },
+      "bug6_fix_verification_2026-08-19": {
+        "reason": "Bug 6 root cause: incident_type alias_map/schema docs used invented uppercase values (ACCIDENT/FLOOD/CONSTRUCTION/CONGESTION) that do not exist in the real DB (data-transform/mock_engine/generator.py:98 only generates accident/road_work/traffic_light_failure, lowercase).",
+        "fix": "Corrected text2sql/app/catalog/sample_values.py (alias_map), text2sql/semantic/sample_values.yaml, and data-transform/model/cubes/incidents/street_incidents.yml to the 3 real lowercase values. Test T2 question changed from the fictional 'ngập lụt (FLOOD)' to the real 'công trình' (road_work). Restarted smartcity_cube + smartcity_web to pick up the changes.",
+        "method": "Re-ran Y03 T1+T2 through the Chrome UI in a single session (no reload between turns), same methodology as the 2026-08-19 reverification above.",
+        "t2_actual_after_fix": {
+          "status": "success",
+          "query": {
+            "measures": [
+              "street_incidents.avg_duration_min"
+            ],
+            "dimensions": [
+              "street_incidents.incident_type"
+            ],
+            "filters": [
+              {
+                "member": "street_incidents.incident_type",
+                "operator": "equals",
+                "values": [
+                  "road_work"
+                ]
+              }
+            ],
+            "timeDimensions": [
+              {
+                "dimension": "street_incidents.timestamp_start",
+                "dateRange": "last 30 days"
+              }
+            ]
+          },
+          "data_summary": "avg_duration_min = 240 phut (non-zero, real data - previously 0 rows with wrong enum value)",
+          "answer": "Thời gian xử lý trung bình của sự cố công trình (road work) là 240 phút."
+        },
+        "result": "Bug 6 CONFIRMED FIXED: filter value now resolves to real lowercase 'road_work' and returns real data (240 phut) instead of an incorrect enum value matching 0 rows. Residual issue NOT in scope for Bug 6: T2 still lost T1's section_id=TTTM filter and dateRange=2026-07-28 context (reset to 'last 30 days', no district filter) - this is the separate Bug 2 context-carry-forward issue, left for the Bug 2 Phase 2 item."
       }
     },
     "Y04": {
