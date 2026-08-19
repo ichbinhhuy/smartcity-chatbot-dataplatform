@@ -375,8 +375,73 @@ def api_lineage_graph():
             },
             {
                 "layer": "Gold (Business Data Warehouse)",
-                "color": "#3B82F6",
+                "color": "#EAB308",
                 "nodes": [
+                    {
+                        "id": "fact_environment",
+                        "name": "fact_environment",
+                        "type": "Fact Table (OLAP)",
+                        "db": "starrocks_gold",
+                        "columns": [
+                            {"name": "id", "type": "VARCHAR(100)", "constraint": "PRIMARY KEY", "desc": "Mã bản ghi Fact môi trường"},
+                            {"name": "section_id", "type": "VARCHAR(50)", "constraint": "NOT NULL", "desc": "Tên phân khu (Can ho, Khu biet thu, TTTM)"},
+                            {"name": "timestamp", "type": "DATETIME", "constraint": "NOT NULL", "desc": "Thời điểm ghi nhận cảm biến"},
+                            {"name": "aqi", "type": "INT", "constraint": "NOT NULL", "desc": "Chỉ số AQI chuẩn"},
+                            {"name": "pm25", "type": "DOUBLE", "constraint": "NOT NULL", "desc": "Nồng độ bụi mịn PM2.5"},
+                            {"name": "noise_level_db", "type": "DOUBLE", "constraint": "NOT NULL", "desc": "Mức độ tiếng ồn (dB)"},
+                            {"name": "is_valid", "type": "BOOLEAN", "constraint": "DEFAULT true", "desc": "Cờ đánh dấu dữ liệu hợp lệ"},
+                            {"name": "data_quality_flag", "type": "VARCHAR(50)", "constraint": "VARCHAR", "desc": "Cờ chất lượng dữ liệu"}
+                        ],
+                        "rules": ["Chuẩn hóa section_id sang tiếng Việt", "Kế thừa dữ liệu sạch từ silver_environment"]
+                    },
+                    {
+                        "id": "fact_incident",
+                        "name": "fact_incident",
+                        "type": "Fact Table (OLAP)",
+                        "db": "starrocks_gold",
+                        "columns": [
+                            {"name": "incident_id", "type": "VARCHAR(100)", "constraint": "PRIMARY KEY", "desc": "Mã sự cố đô thị"},
+                            {"name": "section_id", "type": "VARCHAR(50)", "constraint": "NOT NULL", "desc": "Tên phân khu (Can ho, Khu biet thu, TTTM)"},
+                            {"name": "incident_type", "type": "VARCHAR(50)", "constraint": "NOT NULL", "desc": "Loại sự cố (ACCIDENT, FLOODING, ROAD_WORK)"},
+                            {"name": "timestamp_start", "type": "DATETIME", "constraint": "NOT NULL", "desc": "Thời điểm bắt đầu sự cố"},
+                            {"name": "duration_min", "type": "INT", "constraint": "NOT NULL", "desc": "Thời lượng sự cố (phút)"}
+                        ],
+                        "rules": ["Chỉ lấy các sự cố hợp lệ record_status = 'VALID'", "Chuẩn hóa tên phân khu"]
+                    },
+                    {
+                        "id": "fact_lighting",
+                        "name": "fact_lighting",
+                        "type": "Fact Table (OLAP)",
+                        "db": "starrocks_gold",
+                        "columns": [
+                            {"name": "id", "type": "VARCHAR(100)", "constraint": "PRIMARY KEY", "desc": "Mã bản ghi Fact chiếu sáng"},
+                            {"name": "section_id", "type": "VARCHAR(50)", "constraint": "NOT NULL", "desc": "Tên phân khu (Can ho, Khu biet thu, TTTM)"},
+                            {"name": "pole_id", "type": "VARCHAR(50)", "constraint": "NOT NULL", "desc": "Mã cột đèn chiếu sáng"},
+                            {"name": "recorded_at", "type": "DATETIME", "constraint": "NOT NULL", "desc": "Thời điểm ghi nhận công tơ"},
+                            {"name": "power_kwh", "type": "DOUBLE", "constraint": "NOT NULL", "desc": "Điện năng tiêu thụ (kWh)"},
+                            {"name": "status", "type": "VARCHAR(50)", "constraint": "NOT NULL", "desc": "Trạng thái cột đèn (NORMAL, FAULTY, DIMMED)"},
+                            {"name": "is_valid", "type": "BOOLEAN", "constraint": "DEFAULT true", "desc": "Cờ dữ liệu hợp lệ"},
+                            {"name": "data_quality_flag", "type": "VARCHAR(50)", "constraint": "VARCHAR", "desc": "Cờ chất lượng dữ liệu"}
+                        ],
+                        "rules": ["Chuẩn hóa section_id", "Lọc dữ liệu hợp lệ và cảnh báo"]
+                    },
+                    {
+                        "id": "fact_parking",
+                        "name": "fact_parking",
+                        "type": "Fact Table (OLAP)",
+                        "db": "starrocks_gold",
+                        "columns": [
+                            {"name": "id", "type": "VARCHAR(100)", "constraint": "PRIMARY KEY", "desc": "Mã bản ghi Fact bãi đỗ xe"},
+                            {"name": "gw_id", "type": "VARCHAR(50)", "constraint": "NOT NULL", "desc": "Gateway ID bãi xe"},
+                            {"name": "section_id", "type": "VARCHAR(50)", "constraint": "NOT NULL", "desc": "Tên phân khu (Can ho, Khu biet thu, TTTM)"},
+                            {"name": "recorded_at", "type": "DATETIME", "constraint": "NOT NULL", "desc": "Thời điểm ghi nhận"},
+                            {"name": "slot_total", "type": "INT", "constraint": "NOT NULL", "desc": "Tổng số chỗ đỗ thiết kế"},
+                            {"name": "occupied_slots", "type": "INT", "constraint": "NOT NULL", "desc": "Số chỗ đỗ đang sử dụng"},
+                            {"name": "is_valid", "type": "BOOLEAN", "constraint": "DEFAULT true", "desc": "Cờ dữ liệu hợp lệ"},
+                            {"name": "data_quality_flag", "type": "VARCHAR(50)", "constraint": "VARCHAR", "desc": "Cờ chất lượng dữ liệu"}
+                        ],
+                        "rules": ["Chuẩn hóa section_id", "Đổi tên occupied_slots_clean thành occupied_slots"]
+                    },
                     {
                         "id": "fact_traffic",
                         "name": "fact_traffic",
@@ -385,13 +450,15 @@ def api_lineage_graph():
                         "columns": [
                             {"name": "id", "type": "VARCHAR(100)", "constraint": "PRIMARY KEY", "desc": "Mã bản ghi Fact giao thông"},
                             {"name": "device_id", "type": "VARCHAR(50)", "constraint": "NOT NULL", "desc": "Camera ID"},
-                            {"name": "section_id", "type": "VARCHAR(50)", "constraint": "FOREIGN KEY ➔ dim_sections.id", "desc": "Mã quận/huyện"},
+                            {"name": "section_id", "type": "VARCHAR(50)", "constraint": "NOT NULL", "desc": "Tên phân khu (Can ho, Khu biet thu, TTTM)"},
                             {"name": "recorded_at", "type": "DATETIME", "constraint": "NOT NULL", "desc": "Thời điểm ghi nhận"},
                             {"name": "vehicle_count", "type": "INT", "constraint": "NOT NULL", "desc": "Số xe đi qua"},
                             {"name": "avg_speed_kmh", "type": "DOUBLE", "constraint": "NOT NULL", "desc": "Tốc độ trung bình (km/h)"},
-                            {"name": "overspeed_flag", "type": "BOOLEAN", "constraint": "NOT NULL", "desc": "Vi phạm tốc độ"}
+                            {"name": "overspeed_flag", "type": "BOOLEAN", "constraint": "NOT NULL", "desc": "Cờ vi phạm tốc độ"},
+                            {"name": "is_valid", "type": "BOOLEAN", "constraint": "DEFAULT true", "desc": "Cờ dữ liệu hợp lệ"},
+                            {"name": "data_quality_flag", "type": "VARCHAR(50)", "constraint": "VARCHAR", "desc": "Cờ chất lượng dữ liệu"}
                         ],
-                        "rules": ["Tính toán congestion_rate khi tốc độ < 15.0 km/h"]
+                        "rules": ["Chuẩn hóa section_id sang tên phân khu rõ ràng"]
                     },
                     {
                         "id": "dim_sections",
@@ -400,12 +467,32 @@ def api_lineage_graph():
                         "db": "starrocks_gold",
                         "columns": [
                             {"name": "section_id", "type": "VARCHAR(50)", "constraint": "PRIMARY KEY / NOT NULL", "desc": "Mã phân đoạn đường / khu vực"},
-                            {"name": "section_name", "type": "VARCHAR(100)", "constraint": "NOT NULL", "desc": "Tên chuẩn hóa khu vực (Cổng chính TTTM, Khu Căn hộ, Khu Biệt thự)"},
+                            {"name": "section_name", "type": "VARCHAR(100)", "constraint": "NOT NULL", "desc": "Tên chuẩn hóa khu vực (TTTM, Khu Căn hộ, Khu Biệt thự)"},
                             {"name": "max_speed_limit", "type": "INT", "constraint": "NOT NULL", "desc": "Tốc độ tối đa cho phép (km/h)"},
                             {"name": "total_parking_slots", "type": "INT", "constraint": "NOT NULL", "desc": "Tổng số chỗ đỗ xe thiết kế"},
                             {"name": "created_at", "type": "DATETIME", "constraint": "DEFAULT CURRENT_TIMESTAMP", "desc": "Thời điểm tạo bản ghi danh mục"}
                         ],
                         "rules": ["Bảng chiều danh mục tĩnh (Master Data) dùng để JOIN ngữ cảnh khu vực cho tất cả các bảng Fact trong Gold Data Mart"]
+                    },
+                    {
+                        "id": "gold_street_livability_daily",
+                        "name": "gold_street_livability_daily",
+                        "type": "Composite KPI Mart",
+                        "db": "starrocks_gold",
+                        "columns": [
+                            {"name": "section_id", "type": "VARCHAR(50)", "constraint": "PRIMARY KEY", "desc": "Tên phân khu (Can ho, Khu biet thu, TTTM)"},
+                            {"name": "date_key", "type": "DATE", "constraint": "PRIMARY KEY", "desc": "Ngày đánh giá chỉ số"},
+                            {"name": "score_traffic", "type": "DOUBLE", "constraint": "0 - 100", "desc": "Điểm giao thông (trọng số 35%)"},
+                            {"name": "score_env", "type": "DOUBLE", "constraint": "0 - 100", "desc": "Điểm chất lượng môi trường (trọng số 25%)"},
+                            {"name": "score_parking", "type": "DOUBLE", "constraint": "0 - 100", "desc": "Điểm tiện ích bãi đỗ xe (trọng số 20%)"},
+                            {"name": "score_lighting", "type": "DOUBLE", "constraint": "0 - 100", "desc": "Điểm chiếu sáng thông minh (trọng số 10%)"},
+                            {"name": "score_safety", "type": "DOUBLE", "constraint": "0 - 100", "desc": "Điểm an toàn giao thông (trọng số 10%)"},
+                            {"name": "livability_index", "type": "DOUBLE", "constraint": "0 - 100", "desc": "Chỉ số Đáng sống Tổng hợp đô thị"}
+                        ],
+                        "rules": [
+                            "Tính toán từ 5 bảng fact_*",
+                            "Công thức trung bình gia quyền Livability Index theo ngày"
+                        ]
                     }
                 ]
             }

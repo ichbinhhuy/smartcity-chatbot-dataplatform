@@ -1,5 +1,6 @@
 -- gold_street_livability_daily.sql
 -- dbt model tổng hợp KPI và điểm số livability index theo ngày và phân đoạn đường
+-- Refactored: đọc từ 5 bảng fact_* (Gold) thay vì silver_* để đúng chuẩn Medallion Architecture
 
 {{
     config(
@@ -14,8 +15,8 @@ WITH daily_traffic AS (
         section_id,
         DATE(recorded_at) AS date_key,
         AVG(avg_speed_kmh) AS avg_speed
-    FROM {{ ref('silver_traffic') }}
-    WHERE record_status = 'VALID'
+    FROM {{ ref('fact_traffic') }}
+    WHERE is_valid
     GROUP BY section_id, DATE(recorded_at)
 ),
 
@@ -24,8 +25,8 @@ daily_env AS (
         section_id,
         DATE(timestamp) AS date_key,
         AVG(aqi) AS avg_aqi
-    FROM {{ ref('silver_environment') }}
-    WHERE record_status = 'VALID'
+    FROM {{ ref('fact_environment') }}
+    WHERE is_valid
     GROUP BY section_id, DATE(timestamp)
 ),
 
@@ -33,9 +34,9 @@ daily_parking AS (
     SELECT
         section_id,
         DATE(recorded_at) AS date_key,
-        AVG(occupied_slots_clean * 100.0 / slot_total) AS occ_pct
-    FROM {{ ref('silver_parking') }}
-    WHERE record_status = 'VALID'
+        AVG(occupied_slots * 100.0 / slot_total) AS occ_pct
+    FROM {{ ref('fact_parking') }}
+    WHERE is_valid
     GROUP BY section_id, DATE(recorded_at)
 ),
 
@@ -44,8 +45,8 @@ daily_lighting AS (
         section_id,
         DATE(recorded_at) AS date_key,
         SUM(CASE WHEN status = 'FAULTY' THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS faulty_pct
-    FROM {{ ref('silver_lighting') }}
-    WHERE record_status = 'VALID'
+    FROM {{ ref('fact_lighting') }}
+    WHERE is_valid AND status != 'WARNING'
     GROUP BY section_id, DATE(recorded_at)
 ),
 
@@ -54,8 +55,7 @@ daily_incident AS (
         section_id,
         DATE(timestamp_start) AS date_key,
         COUNT(*) AS incident_count
-    FROM {{ ref('silver_incident') }}
-    WHERE record_status = 'VALID'
+    FROM {{ ref('fact_incident') }}
     GROUP BY section_id, DATE(timestamp_start)
 ),
 
@@ -72,12 +72,7 @@ all_keys AS (
 )
 
 SELECT
-    CASE k.section_id
-        WHEN 'section_2' THEN 'Khu biet thu'
-        WHEN 'section_1' THEN 'Can ho'
-        WHEN 'section_3' THEN 'TTTM'
-        ELSE k.section_id
-    END AS section_id,
+    k.section_id,
     k.date_key,
 
     -- 1. Score Traffic (max 100, target 30 km/h)
