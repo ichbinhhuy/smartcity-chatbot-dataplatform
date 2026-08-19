@@ -140,3 +140,79 @@ def test_empty_question_returns_400(client, monkeypatch):
 
     res = client.post("/api/chat", json={"question": "   "})
     assert res.status_code == 400
+
+
+def test_nlg_answer_appends_truncation_note_when_finish_reason_is_length(client, monkeypatch):
+    """Bug 4: nếu provider cắt câu trả lời NLG vì chạm max_tokens
+    (`finish_reason == "length"`), người dùng phải thấy ghi chú thay vì nhận
+    một câu trả lời dở dang không giải thích lý do."""
+    from tests.conftest import text_response
+
+    fake_llm = FakeLLMClient(
+        [tool_call_response({"measures": ["traffic_flow.avg_speed"]})],
+        answer_responses=[text_response("Đây là câu trả lời bị cắt", finish_reason="length")],
+    )
+    _set_llm(monkeypatch, fake_llm)
+
+    res = client.post("/api/chat", json={"question": "Tốc độ trung bình?"})
+    body = res.json()
+    assert body["status"] == "success"
+    assert "bị cắt do vượt giới hạn độ dài" in body["answer"]
+
+
+def test_nlg_prompt_caps_rows_when_cube_returns_many_rows(client, monkeypatch):
+    """Bug 4: >nlg_max_rows_in_prompt dòng -> prompt NLG chỉ chứa số dòng đã
+    cắt + ghi chú tóm tắt, không dump nguyên mảng thô (dễ gây model tự bịa
+    format/lặp vô hạn)."""
+    from app.config import settings as app_settings
+
+    class ManyRowsCubeClient(FakeCubeClient):
+        def load(self, query):
+            n = app_settings.nlg_max_rows_in_prompt + 10
+            return {
+                "data": [{"traffic_flow.recorded_at": f"2026-07-24T{i:02d}:00:00.000", "traffic_flow.avg_speed": float(i)} for i in range(n)],
+                "annotation": {},
+            }
+
+    monkeypatch.setattr(server_module, "CubeClient", ManyRowsCubeClient)
+    fake_llm = FakeLLMClient([tool_call_response({"measures": ["traffic_flow.avg_speed"]})])
+    _set_llm(monkeypatch, fake_llm)
+
+    res = client.post("/api/chat", json={"question": "Tốc độ trung bình theo giờ hôm nay"})
+    assert res.status_code == 200
+
+    sent_content = fake_llm.answer_calls[0]["messages"][0]["content"]
+    assert "Ghi chú hệ thống" in sent_content
+
+
+def test_second_turn_carries_forward_time_range_when_omitted(client, monkeypatch):
+    """Bug 2: T1 xác lập khung thời gian rõ ràng; T2 hỏi tiếp trong CÙNG
+    session mà không nhắc lại mốc thời gian nào -> phải giữ nguyên dateRange
+    của T1 (qua session `last_query_context`), không rơi về mặc định
+    `last 30 days`. Đây chính là bug quan sát được ở Y01/Y03 (README.md)."""
+    # dateRange dạng chuỗi đơn (không phải list) — cố ý tránh dạng
+    # [start, end]: `_validate_time_dimensions` (app/nlu/validator.py) có
+    # hành vi riêng, có từ trước Bug 2, thu gọn list dateRange về phần tử đầu
+    # tiên bất kể prior_query hay không — không phải phạm vi test này.
+    fake_llm = FakeLLMClient(
+        [
+            tool_call_response(
+                {
+                    "measures": ["air_quality.avg_aqi"],
+                    "timeDimensions": [{"dimension": "air_quality.recorded_at", "dateRange": "2026-07-21"}],
+                }
+            ),
+            tool_call_response({"measures": ["air_quality.avg_pm25"]}),  # T2: không nêu timeDimensions
+        ]
+    )
+    _set_llm(monkeypatch, fake_llm)
+
+    res1 = client.post("/api/chat", json={"question": "AQI trung bình ngày 21/7"})
+    body1 = res1.json()
+    assert body1["status"] == "success"
+    session_id = body1["session_id"]
+
+    res2 = client.post("/api/chat", json={"question": "Còn PM2.5 thì sao?", "session_id": session_id})
+    body2 = res2.json()
+    assert body2["status"] == "success"
+    assert body2["query"]["timeDimensions"][0]["dateRange"] == "2026-07-21"

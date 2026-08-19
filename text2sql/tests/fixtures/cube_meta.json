@@ -1,461 +1,970 @@
 {
   "cubes": [
     {
+      "public": true,
       "name": "city_health_index",
+      "type": "cube",
       "title": "City Health Index",
+      "connectedComponent": 1,
       "measures": [
         {
           "name": "city_health_index.avg_livability_index",
-          "title": "avg_livability_index",
-          "type": "avg",
-          "description": ""
+          "title": "City Health Index Chi so song tot trung binh",
+          "description": "Diem livability trung binh cua khu vuc trong ky xem xet (thang diem 0-100). Dung de so sanh chat luong song giua cac khu.",
+          "shortTitle": "Chi so song tot trung binh",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
-          "name": "city_health_index.sum_livability_index",
-          "title": "sum_livability_index",
-          "type": "sum",
-          "description": ""
+          "name": "city_health_index.min_livability_index",
+          "title": "City Health Index Chi so song tot thap nhat",
+          "description": "Diem livability thap nhat ghi nhan duoc trong ky (thang 0-100)",
+          "shortTitle": "Chi so song tot thap nhat",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "min",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
+        },
+        {
+          "name": "city_health_index.max_livability_index",
+          "title": "City Health Index Chi so song tot cao nhat",
+          "description": "Diem livability cao nhat ghi nhan duoc trong ky (thang 0-100)",
+          "shortTitle": "Chi so song tot cao nhat",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "max",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "city_health_index.avg_traffic_score",
-          "title": "avg_traffic_score",
-          "type": "avg",
-          "description": ""
+          "title": "City Health Index Diem thanh phan giao thong",
+          "description": "Diem so thanh phan giao thong trong chi so livability (thang 0-100)",
+          "shortTitle": "Diem thanh phan giao thong",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "city_health_index.avg_env_score",
-          "title": "avg_env_score",
-          "type": "avg",
-          "description": ""
+          "title": "City Health Index Diem thanh phan moi truong",
+          "description": "Diem so thanh phan chat luong moi truong khong khi trong chi so livability (thang 0-100)",
+          "shortTitle": "Diem thanh phan moi truong",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "city_health_index.avg_parking_score",
-          "title": "avg_parking_score",
-          "type": "avg",
-          "description": ""
+          "title": "City Health Index Diem thanh phan bai do xe",
+          "description": "Diem so thanh phan bai do xe trong chi so livability (thang 0-100)",
+          "shortTitle": "Diem thanh phan bai do xe",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "city_health_index.avg_lighting_score",
-          "title": "avg_lighting_score",
-          "type": "avg",
-          "description": ""
+          "title": "City Health Index Diem thanh phan chieu sang",
+          "description": "Diem so thanh phan he thong den duong trong chi so livability (thang 0-100)",
+          "shortTitle": "Diem thanh phan chieu sang",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "city_health_index.avg_safety_score",
-          "title": "avg_safety_score",
-          "type": "avg",
-          "description": ""
+          "title": "City Health Index Diem thanh phan an toan",
+          "description": "Diem so thanh phan an toan giao thong (su co, tai nan) trong chi so livability (thang 0-100)",
+          "shortTitle": "Diem thanh phan an toan",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         }
       ],
       "dimensions": [
         {
           "name": "city_health_index.id",
-          "title": "id",
+          "title": "City Health Index ID ban ghi",
           "type": "string",
-          "description": ""
+          "description": "Khoa chinh tong hop tu section_id va date_key",
+          "shortTitle": "ID ban ghi",
+          "suggestFilterValues": true,
+          "isVisible": false
         },
         {
           "name": "city_health_index.section_id",
-          "title": "section_id",
+          "title": "City Health Index Ma khu vuc",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh phan khu (Can ho, Khu biet thu, TTTM)",
+          "shortTitle": "Ma khu vuc",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "city_health_index.livability_grade",
-          "title": "livability_grade",
+          "title": "City Health Index Xep hang chat luong song",
           "type": "string",
-          "description": ""
+          "description": "Phan hang chi so livability: EXCELLENT (>=85), GOOD (70-84), POOR (<70)",
+          "shortTitle": "Xep hang chat luong song",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "city_health_index.date",
-          "title": "date",
-          "type": "string",
-          "description": ""
+          "title": "City Health Index Ngay tinh toan",
+          "type": "time",
+          "description": "Ngay tong hop chi so livability hang ngay. Dung de loc theo dateRange (last 7 days, last 30 days, etc.)",
+          "shortTitle": "Ngay tinh toan",
+          "suggestFilterValues": true,
+          "isVisible": true
         }
-      ]
+      ],
+      "segments": []
     },
     {
+      "public": true,
       "name": "air_quality",
+      "type": "cube",
       "title": "Air Quality",
+      "connectedComponent": 1,
       "measures": [
         {
           "name": "air_quality.avg_aqi",
-          "title": "avg_aqi",
-          "type": "avg",
-          "description": ""
+          "title": "Air Quality Chi so chat luong khong khi trung binh (AQI)",
+          "description": "Chi so AQI trung binh. <50: Tot, 51-100: Trung binh, >100: Xau cho suc khoe",
+          "shortTitle": "Chi so chat luong khong khi trung binh (AQI)",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "air_quality.max_aqi",
-          "title": "max_aqi",
-          "type": "max",
-          "description": ""
+          "title": "Air Quality Chi so AQI cao nhat",
+          "description": "Gia tri AQI cao nhat ghi nhan duoc trong ky xem xet",
+          "shortTitle": "Chi so AQI cao nhat",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "max",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "air_quality.avg_pm25",
-          "title": "avg_pm25",
-          "type": "avg",
-          "description": ""
+          "title": "Air Quality Nong do bui min PM2.5 trung binh (ug/m3)",
+          "description": "Nong do hat bui min PM2.5 trung binh trong khong khi, tinh bang microgam/m3",
+          "shortTitle": "Nong do bui min PM2.5 trung binh (ug/m3)",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "air_quality.avg_noise_db",
-          "title": "avg_noise_db",
-          "type": "avg",
-          "description": ""
+          "title": "Air Quality Do on trung binh (dBA)",
+          "description": "Muc do tieng on trung binh do bang dBA. <50: Yen tinh, 50-70: Trung binh, >70: On ao",
+          "shortTitle": "Do on trung binh (dBA)",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "air_quality.unhealthy_air_hours",
-          "title": "unhealthy_air_hours",
-          "type": "sum",
-          "description": ""
+          "title": "Air Quality So gio khong khi xau",
+          "description": "Tong so gio co AQI > 100 (nguong Unhealthy). Moi ban ghi log = 15 phut = 0.25 gio.",
+          "shortTitle": "So gio khong khi xau",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "sum",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         }
       ],
       "dimensions": [
         {
           "name": "air_quality.id",
-          "title": "id",
+          "title": "Air Quality ID ban ghi",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh duy nhat cua ban ghi log cam bien moi truong",
+          "shortTitle": "ID ban ghi",
+          "suggestFilterValues": true,
+          "isVisible": false
         },
         {
           "name": "air_quality.section_id",
-          "title": "section_id",
+          "title": "Air Quality Ma khu vuc",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh phan khu (Can ho, Khu biet thu, TTTM)",
+          "shortTitle": "Ma khu vuc",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "air_quality.aqi_category",
-          "title": "aqi_category",
+          "title": "Air Quality Phan loai chat luong khong khi",
           "type": "string",
-          "description": ""
+          "description": "Phan loai AQI: GOOD (<=50), MODERATE (51-100), UNHEALTHY (>100)",
+          "shortTitle": "Phan loai chat luong khong khi",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "air_quality.noise_category",
-          "title": "noise_category",
+          "title": "Air Quality Phan loai muc do on",
           "type": "string",
-          "description": ""
+          "description": "Phan loai tieng on: QUIET (<50 dBA), MODERATE (50-70 dBA), NOISY (>70 dBA)",
+          "shortTitle": "Phan loai muc do on",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "air_quality.recorded_at",
-          "title": "recorded_at",
+          "title": "Air Quality Thoi diem ghi nhan",
           "type": "time",
-          "description": ""
+          "description": "Thoi diem ghi nhan do cam bien moi truong (tan suat 15 phut/ban ghi)",
+          "shortTitle": "Thoi diem ghi nhan",
+          "suggestFilterValues": true,
+          "isVisible": true
         }
-      ]
+      ],
+      "segments": []
     },
     {
+      "public": true,
       "name": "street_incidents",
+      "type": "cube",
       "title": "Street Incidents",
+      "connectedComponent": 1,
       "measures": [
         {
           "name": "street_incidents.total_incidents",
-          "title": "total_incidents",
-          "type": "count",
-          "description": ""
+          "title": "Street Incidents Tong so su co giao thong",
+          "description": "Tong so su co giao thong ghi nhan trong ky: tai nan, cong trinh, hong den tin hieu",
+          "shortTitle": "Tong so su co giao thong",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "count",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "street_incidents.avg_duration_min",
-          "title": "avg_duration_min",
-          "type": "avg",
-          "description": ""
+          "title": "Street Incidents Thoi gian xu ly trung binh (phut)",
+          "description": "Thoi gian xu ly trung binh cua mot su co giao thong, tinh bang phut",
+          "shortTitle": "Thoi gian xu ly trung binh (phut)",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "street_incidents.total_impact_hours",
-          "title": "total_impact_hours",
-          "type": "sum",
-          "description": ""
+          "title": "Street Incidents Tong so gio anh huong giao thong",
+          "description": "Tong thoi gian anh huong giao thong cua tat ca su co trong ky, tinh bang gio. Moi su co la 1 ban ghi don le (khong phai log 15 phut).",
+          "shortTitle": "Tong so gio anh huong giao thong",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "sum",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         }
       ],
       "dimensions": [
         {
           "name": "street_incidents.id",
-          "title": "id",
+          "title": "Street Incidents ID su co",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh duy nhat cua su co giao thong",
+          "shortTitle": "ID su co",
+          "suggestFilterValues": true,
+          "isVisible": false
         },
         {
           "name": "street_incidents.section_id",
-          "title": "section_id",
+          "title": "Street Incidents Ma khu vuc xay ra su co",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh phan khu noi su co xay ra (Can ho, Khu biet thu, TTTM)",
+          "shortTitle": "Ma khu vuc xay ra su co",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "street_incidents.incident_type",
-          "title": "incident_type",
+          "title": "Street Incidents Loai su co",
           "type": "string",
-          "description": ""
+          "description": "Phan loai su co: accident (tai nan), road_work (cong trinh/sua duong), traffic_light_failure (hong den tin hieu)",
+          "shortTitle": "Loai su co",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "street_incidents.severity",
-          "title": "severity",
+          "title": "Street Incidents Muc do nghiem trong",
           "type": "string",
-          "description": ""
+          "description": "Phan loai muc do dua tren thoi gian xu ly: MINOR (<30 phut), MAJOR (30-90 phut), CRITICAL (>90 phut)",
+          "shortTitle": "Muc do nghiem trong",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "street_incidents.timestamp_start",
-          "title": "timestamp_start",
+          "title": "Street Incidents Thoi diem bat dau su co",
           "type": "time",
-          "description": ""
+          "description": "Thoi diem su co bat dau duoc ghi nhan. Dung de loc theo khoang thoi gian.",
+          "shortTitle": "Thoi diem bat dau su co",
+          "suggestFilterValues": true,
+          "isVisible": true
         }
-      ]
+      ],
+      "segments": []
     },
     {
+      "public": true,
       "name": "smart_lighting",
+      "type": "cube",
       "title": "Smart Lighting",
+      "connectedComponent": 1,
       "measures": [
         {
+          "name": "smart_lighting.total_records",
+          "title": "Smart Lighting Tong so ban ghi log",
+          "description": "Tong so ban ghi cam bien cot den da ghi nhan trong ky. Moi ban ghi = 1 lan do 15 phut.",
+          "shortTitle": "Tong so ban ghi log",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "count",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
+        },
+        {
           "name": "smart_lighting.total_power_kwh",
-          "title": "total_power_kwh",
-          "type": "sum",
-          "description": ""
+          "title": "Smart Lighting Tong dien nang tieu thu (kWh)",
+          "description": "Tong dien nang tieu thu cua tat ca cot den trong ky xem xet, tinh bang kWh",
+          "shortTitle": "Tong dien nang tieu thu (kWh)",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "sum",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "smart_lighting.avg_power_per_pole",
-          "title": "avg_power_per_pole",
-          "type": "avg",
-          "description": ""
-        },
-        {
-          "name": "smart_lighting.sum_power_per_pole",
-          "title": "sum_power_per_pole",
-          "type": "sum",
-          "description": ""
+          "title": "Smart Lighting Dien nang tieu thu trung binh moi cot den (kWh)",
+          "description": "Dien nang tieu thu trung binh tren moi ban ghi log cua cot den, tinh bang kWh",
+          "shortTitle": "Dien nang tieu thu trung binh moi cot den (kWh)",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "smart_lighting.faulty_lamp_count",
-          "title": "faulty_lamp_count",
-          "type": "sum",
-          "description": ""
+          "title": "Smart Lighting So cot den bi hong",
+          "description": "So luong cot den vat ly phan biet (theo pole_id) co trang thai FAULTY trong ky xem xet. Day la so cot den thuc te, khong phai so lan log bao hong.",
+          "shortTitle": "So cot den bi hong",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "countDistinct",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
-          "name": "smart_lighting.faulty_lamp_pct",
-          "title": "faulty_lamp_pct",
-          "type": "avg",
-          "description": ""
+          "name": "smart_lighting.faulty_event_count",
+          "title": "Smart Lighting So luot cam bien bao hong",
+          "description": "Tong so ban ghi log ghi nhan trang thai FAULTY. Moi ban ghi = 1 lan do 15 phut. Dung de phan tich tan suat su co, khong phai so cot den.",
+          "shortTitle": "So luot cam bien bao hong",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "sum",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
+        },
+        {
+          "name": "smart_lighting.faulty_time_pct",
+          "title": "Smart Lighting Ty le thoi gian hong (%)",
+          "description": "Phan tram thoi gian trung binh ma cac cot den co trang thai FAULTY, dua tren tan suat log 15 phut. Day la ty le thoi gian hong, khong phai ty le so cot den hong.",
+          "shortTitle": "Ty le thoi gian hong (%)",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         }
       ],
       "dimensions": [
         {
           "name": "smart_lighting.id",
-          "title": "id",
+          "title": "Smart Lighting ID ban ghi",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh duy nhat cua ban ghi log cot den",
+          "shortTitle": "ID ban ghi",
+          "suggestFilterValues": true,
+          "isVisible": false
         },
         {
           "name": "smart_lighting.section_id",
-          "title": "section_id",
+          "title": "Smart Lighting Ma khu vuc",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh phan khu (Can ho, Khu biet thu, TTTM)",
+          "shortTitle": "Ma khu vuc",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "smart_lighting.pole_id",
-          "title": "pole_id",
+          "title": "Smart Lighting Ma cot den",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh duy nhat cua cot den chieu sang vat ly",
+          "shortTitle": "Ma cot den",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "smart_lighting.lamp_status",
-          "title": "lamp_status",
+          "title": "Smart Lighting Trang thai cot den",
           "type": "string",
-          "description": ""
+          "description": "Trang thai van hanh hien tai cua cot den: NORMAL (binh thuong), FAULTY (bi hong), DIMMED (giam sang)",
+          "shortTitle": "Trang thai cot den",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "smart_lighting.operating_mode",
-          "title": "operating_mode",
+          "title": "Smart Lighting Che do chieu sang",
           "type": "string",
-          "description": ""
+          "description": "Che do hoat dong cua cot den theo gio: EVENING_FULL (toi sang hoan toan 18h-23h), NIGHT_DIMMING (dem giam sang 1h-5h), DAY_OFF (ban ngay tat)",
+          "shortTitle": "Che do chieu sang",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "smart_lighting.recorded_at",
-          "title": "recorded_at",
+          "title": "Smart Lighting Thoi diem ghi nhan",
           "type": "time",
-          "description": ""
+          "description": "Thoi diem ghi nhan log trang thai cot den (tan suat 15 phut/ban ghi)",
+          "shortTitle": "Thoi diem ghi nhan",
+          "suggestFilterValues": true,
+          "isVisible": true
         }
-      ]
+      ],
+      "segments": []
     },
     {
+      "public": true,
       "name": "smart_parking",
+      "type": "cube",
       "title": "Smart Parking",
+      "connectedComponent": 1,
       "measures": [
         {
           "name": "smart_parking.total_records",
-          "title": "total_records",
-          "type": "count",
-          "description": ""
+          "title": "Smart Parking Tong so ban ghi log",
+          "description": "Tong so ban ghi cam bien bai do xe da ghi nhan trong ky",
+          "shortTitle": "Tong so ban ghi log",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "count",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
-          "name": "smart_parking.total_slots",
-          "title": "total_slots",
-          "type": "avg",
-          "description": ""
+          "name": "smart_parking.avg_slot_capacity",
+          "title": "Smart Parking Suc chua trung binh bai do xe (cho)",
+          "description": "Suc chua trung binh cua bai do xe. He thong hien tai moi khu co 100 cho do xe.",
+          "shortTitle": "Suc chua trung binh bai do xe (cho)",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "smart_parking.avg_occupied_slots",
-          "title": "avg_occupied_slots",
-          "type": "avg",
-          "description": ""
+          "title": "Smart Parking So cho da su dung trung binh",
+          "description": "So luong cho do xe dang bi chiem dung trung binh trong ky",
+          "shortTitle": "So cho da su dung trung binh",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "smart_parking.max_occupied_slots",
-          "title": "max_occupied_slots",
-          "type": "max",
-          "description": ""
+          "title": "Smart Parking So cho da su dung cao nhat",
+          "description": "So luong cho do xe bi chiem dung cao nhat trong ky (do lu luong dinh diem)",
+          "shortTitle": "So cho da su dung cao nhat",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "max",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "smart_parking.occupancy_pct",
-          "title": "occupancy_pct",
-          "type": "avg",
-          "description": ""
+          "title": "Smart Parking Ty le lap day bai do xe (%)",
+          "description": "Ty le phan tram cho do xe dang bi chiem dung so voi tong suc chua. 100% = het cho.",
+          "shortTitle": "Ty le lap day bai do xe (%)",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "smart_parking.available_slots",
-          "title": "available_slots",
-          "type": "avg",
-          "description": ""
+          "title": "Smart Parking So cho do xe con trong",
+          "description": "So luong cho do xe con trong trung binh. Bang tong suc chua tru so cho dang su dung.",
+          "shortTitle": "So cho do xe con trong",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         }
       ],
       "dimensions": [
         {
           "name": "smart_parking.id",
-          "title": "id",
+          "title": "Smart Parking ID ban ghi",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh duy nhat cua ban ghi log bai do xe",
+          "shortTitle": "ID ban ghi",
+          "suggestFilterValues": true,
+          "isVisible": false
         },
         {
           "name": "smart_parking.section_id",
-          "title": "section_id",
+          "title": "Smart Parking Ma khu vuc",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh phan khu (Can ho, Khu biet thu, TTTM)",
+          "shortTitle": "Ma khu vuc",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "smart_parking.gateway_id",
-          "title": "gateway_id",
+          "title": "Smart Parking Ma cong vao/ra bai do xe",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh cong vao hoac cong ra cua bai do xe",
+          "shortTitle": "Ma cong vao/ra bai do xe",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "smart_parking.occupancy_level",
-          "title": "occupancy_level",
+          "title": "Smart Parking Muc do lap day bai do xe",
           "type": "string",
-          "description": ""
+          "description": "Phan cap muc do lap day: LOW (<50%), OPTIMAL (50-80%), CRITICAL (>80%)",
+          "shortTitle": "Muc do lap day bai do xe",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "smart_parking.recorded_at",
-          "title": "recorded_at",
+          "title": "Smart Parking Thoi diem ghi nhan",
           "type": "time",
-          "description": ""
+          "description": "Thoi diem ghi nhan trang thai bai do xe (tan suat 15 phut/ban ghi)",
+          "shortTitle": "Thoi diem ghi nhan",
+          "suggestFilterValues": true,
+          "isVisible": true
         }
-      ]
+      ],
+      "segments": []
     },
     {
+      "public": true,
       "name": "districts",
+      "type": "cube",
       "title": "Districts",
-      "measures": [],
+      "connectedComponent": 1,
+      "measures": [
+        {
+          "name": "districts.total_sections",
+          "title": "Districts Tong so khu vuc",
+          "description": "Tong so phan khu (section) hien co trong he thong do thi thong minh",
+          "shortTitle": "Tong so khu vuc",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "count",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
+        }
+      ],
       "dimensions": [
         {
           "name": "districts.id",
-          "title": "Ma khu vuc",
+          "title": "Districts Ma khu vuc",
           "type": "string",
-          "description": "Ma dinh danh duy nhat cua phan khu (Can ho, Khu biet thu, TTTM)"
+          "description": "Ma dinh danh duy nhat cua phan khu (Can ho, Khu biet thu, TTTM)",
+          "shortTitle": "Ma khu vuc",
+          "suggestFilterValues": true,
+          "isVisible": false
         },
         {
           "name": "districts.name",
-          "title": "Ten khu vuc",
+          "title": "Districts Ten khu vuc",
           "type": "string",
-          "description": "Ten day du cua phan khu trong du an do thi thong minh"
+          "description": "Ten day du cua phan khu trong du an do thi thong minh",
+          "shortTitle": "Ten khu vuc",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "districts.max_speed_limit",
-          "title": "Toc do toi da cho phep (km/h)",
+          "title": "Districts Toc do toi da cho phep (km/h)",
           "type": "number",
-          "description": "Toc do toi da luu thong duoc phep trong phan khu, tinh bang km/h"
+          "description": "Toc do toi da luu thong duoc phep trong phan khu, tinh bang km/h",
+          "shortTitle": "Toc do toi da cho phep (km/h)",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "districts.total_parking_slots",
-          "title": "Tong so cho do xe cua khu vuc",
+          "title": "Districts Tong so cho do xe cua khu vuc",
           "type": "number",
-          "description": "Tong so cho do xe trong phan khu (dat tinh tu dim_sections, khong phai tu log)"
+          "description": "Tong so cho do xe trong phan khu (dat tinh tu dim_sections, khong phai tu log)",
+          "shortTitle": "Tong so cho do xe cua khu vuc",
+          "suggestFilterValues": true,
+          "isVisible": true
         }
-      ]
+      ],
+      "segments": []
     },
     {
+      "public": true,
       "name": "traffic_flow",
+      "type": "cube",
       "title": "Traffic Flow",
+      "connectedComponent": 1,
       "measures": [
         {
           "name": "traffic_flow.total_records",
-          "title": "total_records",
-          "type": "count",
-          "description": ""
+          "title": "Traffic Flow Tong so ban ghi do giao thong",
+          "description": "Tong so ban ghi du lieu giao thong da ghi nhan trong ky",
+          "shortTitle": "Tong so ban ghi do giao thong",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "count",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "traffic_flow.avg_vehicle_count",
-          "title": "avg_vehicle_count",
-          "type": "avg",
-          "description": ""
+          "title": "Traffic Flow So luong xe luu thong trung binh",
+          "description": "So luong phuong tien di qua diem do trung binh trong moi chu ky 15 phut",
+          "shortTitle": "So luong xe luu thong trung binh",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "traffic_flow.sum_vehicle_count",
-          "title": "sum_vehicle_count",
-          "type": "sum",
-          "description": ""
+          "title": "Traffic Flow Tong so luong xe luu thong",
+          "description": "Tong so luong phuong tien di qua tat ca diem do trong ky xem xet",
+          "shortTitle": "Tong so luong xe luu thong",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "sum",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "traffic_flow.max_vehicle_count",
-          "title": "max_vehicle_count",
-          "type": "max",
-          "description": ""
+          "title": "Traffic Flow So luong xe dinh diem",
+          "description": "So luong phuong tien lon nhat ghi nhan trong mot chu ky 15 phut (thoi diem cao diem)",
+          "shortTitle": "So luong xe dinh diem",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "max",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "traffic_flow.avg_speed",
-          "title": "avg_speed",
-          "type": "avg",
-          "description": ""
+          "title": "Traffic Flow Toc do luu thong trung binh (km/h)",
+          "description": "Toc do luu thong trung binh uoc tinh. Luu y: day la trung binh cua cac gia tri da pre-aggregate theo chu ky do 15 phut (Mean of Means), co the co sai lech nho so voi toc do thuc te theo phuong tien.",
+          "shortTitle": "Toc do luu thong trung binh (km/h)",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "traffic_flow.overspeed_count",
-          "title": "overspeed_count",
-          "type": "sum",
-          "description": ""
+          "title": "Traffic Flow So lan vi pham toc do",
+          "description": "Tong so lan do giao thong ghi nhan co phuong tien vuot qua toc do toi da cho phep",
+          "shortTitle": "So lan vi pham toc do",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "sum",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         },
         {
           "name": "traffic_flow.congestion_rate",
-          "title": "congestion_rate",
-          "type": "avg",
-          "description": ""
+          "title": "Traffic Flow Ty le un tac giao thong (%)",
+          "description": "Ty le phan tram thoi gian giao thong bi un tac (toc do < 15 km/h). 100% = lien tuc un tac.",
+          "shortTitle": "Ty le un tac giao thong (%)",
+          "cumulativeTotal": false,
+          "cumulative": false,
+          "type": "number",
+          "aggType": "avg",
+          "drillMembers": [],
+          "drillMembersGrouped": {
+            "measures": [],
+            "dimensions": []
+          },
+          "isVisible": true
         }
       ],
       "dimensions": [
         {
           "name": "traffic_flow.id",
-          "title": "id",
+          "title": "Traffic Flow ID ban ghi",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh duy nhat cua ban ghi log giao thong",
+          "shortTitle": "ID ban ghi",
+          "suggestFilterValues": true,
+          "isVisible": false
         },
         {
           "name": "traffic_flow.section_id",
-          "title": "section_id",
+          "title": "Traffic Flow Ma doan duong (khu vuc)",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh doan duong hoac phan khu (Can ho, Khu biet thu, TTTM)",
+          "shortTitle": "Ma doan duong (khu vuc)",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "traffic_flow.camera_id",
-          "title": "camera_id",
+          "title": "Traffic Flow Ma camera giao thong",
           "type": "string",
-          "description": ""
+          "description": "Ma dinh danh thiet bi camera do luu luong giao thong",
+          "shortTitle": "Ma camera giao thong",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "traffic_flow.overspeed_flag",
-          "title": "overspeed_flag",
+          "title": "Traffic Flow Co vi pham toc do",
           "type": "boolean",
-          "description": ""
+          "description": "True neu chu ky do nay co phuong tien vuot qua toc do toi da cho phep",
+          "shortTitle": "Co vi pham toc do",
+          "suggestFilterValues": true,
+          "isVisible": true
         },
         {
           "name": "traffic_flow.recorded_at",
-          "title": "recorded_at",
+          "title": "Traffic Flow Thoi diem ghi nhan",
           "type": "time",
-          "description": ""
+          "description": "Thoi diem ghi nhan du lieu giao thong (tan suat 15 phut/ban ghi)",
+          "shortTitle": "Thoi diem ghi nhan",
+          "suggestFilterValues": true,
+          "isVisible": true
         }
-      ]
+      ],
+      "segments": []
     }
   ]
 }

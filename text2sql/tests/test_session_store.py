@@ -71,6 +71,27 @@ class TestInMemorySessionStore:
         store.delete("s1")
         assert store.get_clarification_streak("s1") == 0
 
+    def test_last_query_context_missing_session_returns_none(self):
+        store = InMemorySessionStore()
+        assert store.get_last_query_context("khong-ton-tai") is None
+
+    def test_last_query_context_roundtrip(self):
+        store = InMemorySessionStore()
+        query = {"measures": ["air_quality.avg_aqi"], "timeDimensions": [{"dimension": "air_quality.recorded_at", "dateRange": "2026-07-21"}]}
+        store.set_last_query_context("s1", query)
+        assert store.get_last_query_context("s1") == query
+
+    def test_last_query_context_negative_ttl_expires_immediately(self):
+        store = InMemorySessionStore()
+        store.set_last_query_context("s1", {"measures": []}, ttl_seconds=-1)
+        assert store.get_last_query_context("s1") is None
+
+    def test_delete_also_clears_last_query_context(self):
+        store = InMemorySessionStore()
+        store.set_last_query_context("s1", {"measures": []})
+        store.delete("s1")
+        assert store.get_last_query_context("s1") is None
+
 
 class TestRedisSessionStore:
     @pytest.fixture
@@ -161,3 +182,39 @@ class TestRedisSessionStore:
 
         monkeypatch.setattr(store._client, "setex", _raise)
         store.set_clarification_streak("s1", 1)  # không raise
+
+    def test_last_query_context_missing_session_returns_none(self, store):
+        assert store.get_last_query_context("khong-ton-tai") is None
+
+    def test_last_query_context_roundtrip(self, store):
+        query = {"measures": ["air_quality.avg_aqi"], "timeDimensions": [{"dimension": "air_quality.recorded_at", "dateRange": "2026-07-21"}]}
+        store.set_last_query_context("s1", query)
+        assert store.get_last_query_context("s1") == query
+
+    def test_last_query_context_sets_ttl(self, store, fake_client):
+        store.set_last_query_context("s1", {"measures": []}, ttl_seconds=120)
+        ttl = fake_client.ttl(store._last_query_key("s1"))
+        assert 0 < ttl <= 120
+
+    def test_delete_also_clears_last_query_context(self, store):
+        store.set_last_query_context("s1", {"measures": []})
+        store.delete("s1")
+        assert store.get_last_query_context("s1") is None
+
+    def test_last_query_context_degrades_to_none_on_redis_error(self, store, monkeypatch):
+        def _raise(*a, **kw):
+            raise redis_lib.exceptions.ConnectionError("boom")
+
+        monkeypatch.setattr(store._client, "get", _raise)
+        assert store.get_last_query_context("s1") is None  # không raise
+
+    def test_set_last_query_context_degrades_to_noop_on_redis_error(self, store, monkeypatch):
+        def _raise(*a, **kw):
+            raise redis_lib.exceptions.ConnectionError("boom")
+
+        monkeypatch.setattr(store._client, "setex", _raise)
+        store.set_last_query_context("s1", {"measures": []})  # không raise
+
+    def test_last_query_context_degrades_to_none_on_corrupt_payload(self, store, fake_client):
+        fake_client.set(store._last_query_key("s1"), "khong-phai-json{{{")
+        assert store.get_last_query_context("s1") is None
