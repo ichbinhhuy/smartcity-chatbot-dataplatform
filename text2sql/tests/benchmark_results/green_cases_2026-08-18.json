@@ -14,10 +14,15 @@
     ],
     "summary": {
       "total": 15,
-      "pass": 13,
-      "fail": 2,
-      "pass_rate": "86.7%",
-      "target_semantic_exact_match": ">=90%"
+      "pass": 12,
+      "fail": 3,
+      "pass_rate": "80.0%",
+      "target_semantic_exact_match": ">=90%",
+      "note": "G05 verdict corrected from PASS to FAIL after 2026-08-19 re-verification revealed the case is highly non-deterministic (5 runs, 5 different behaviors) and one prior recorded PASS shows signs of NLG hallucination rather than genuine correct retrieval."
+    },
+    "reverification_2026-08-19": {
+      "method": "Re-ran all 15 Green cases through the Chrome UI at http://localhost:8000 (fresh session per case). G05 specifically was re-run 3 additional times via the browser after discovering a data-integrity anomaly in its previously recorded result.",
+      "result": "13/15 cases (all except G05) reproduced their exact original values through the UI, confirming those results. G12 reproduced the same failure as before (only queries one of the two compared dates). G05 turned out to be the most unstable case in the entire 30-case suite: 5 total runs of the identical question produced 5 different behaviors (see cases.G05.run_history) - never once correctly retrieving districts.total_parking_slots even though that field exists in the schema and was confirmed via direct Cube API query to equal 100 for section \"Can ho\". One of the 5 runs shows apparent NLG hallucination: the returned Cube data contained no parking-slot number at all, yet the generated answer confidently stated \"100 chỗ\"."
     }
   },
   "cases": {
@@ -294,8 +299,122 @@
         ],
         "answer": "- **Tóm tắt tổng quan**: Tổng số chỗ đỗ xe thiết kế quy hoạch của phân khu Căn hộ là 100 chỗ. \n- **Số liệu chi tiết**: - Phân khu: Căn hộ \n - Tổng số chỗ đỗ xe: 100"
       },
-      "verdict": "PASS",
-      "note": "Filter dùng districts.name thay vì id như kỳ vọng, nhưng cùng miền giá trị nên không ảnh hưởng kết quả."
+      "verdict": "FAIL",
+      "note": "Extremely unstable across repeated runs of the exact same question - 5 runs, 5 different behaviors. Never once correctly queried districts.total_parking_slots, even though that field genuinely exists in the Cube schema and was verified directly via the Cube API to equal 100 for \"Can ho\".",
+      "run_history": [
+        {
+          "run": 1,
+          "source": "original automated run (2026-08-18, API script)",
+          "query": {
+            "measures": [],
+            "dimensions": [
+              "districts.id"
+            ],
+            "filters": [
+              {
+                "member": "districts.name",
+                "operator": "equals",
+                "values": [
+                  "Can ho"
+                ]
+              }
+            ]
+          },
+          "data": [
+            {
+              "districts.id": "Can ho"
+            }
+          ],
+          "answer": "Không có thông tin về tổng số chỗ đỗ xe thiết kế quy hoạch của phân khu Căn hộ.",
+          "result": "WRONG - queried districts.id only, no parking data, answered \"no information\""
+        },
+        {
+          "run": 2,
+          "source": "recorded in this file before 2026-08-19 re-verification (exact provenance in this session unclear)",
+          "query": {
+            "measures": [],
+            "dimensions": [
+              "districts.id"
+            ],
+            "filters": [
+              {
+                "member": "districts.name",
+                "operator": "equals",
+                "values": [
+                  "Can ho"
+                ]
+              }
+            ],
+            "timeDimensions": []
+          },
+          "data": [
+            {
+              "districts.id": "Can ho"
+            }
+          ],
+          "answer": "- **Tóm tắt tổng quan**: Tổng số chỗ đỗ xe thiết kế quy hoạch của phân khu Căn hộ là 100 chỗ. \n- **Số liệu chi tiết**: - Phân khu: Căn hộ \n - Tổng số chỗ đỗ xe: 100",
+          "result": "SUSPICIOUS PASS - the query/data only contain districts.id (\"Can ho\"), no total_parking_slots value at all, yet the NLG answer states \"100 chỗ\" (which happens to match the true value of 100, verified directly via Cube API). This looks like NLG hallucination that coincidentally landed on the correct number rather than a genuine correct retrieval."
+        },
+        {
+          "run": 3,
+          "source": "2026-08-19 re-verification, browser UI, attempt 1",
+          "query": {
+            "measures": [
+              "districts.total_sections"
+            ],
+            "dimensions": [
+              "districts.id"
+            ],
+            "filters": [
+              {
+                "member": "districts.name",
+                "operator": "equals",
+                "values": [
+                  "Can ho"
+                ]
+              }
+            ]
+          },
+          "data": null,
+          "answer": "Tổng số chỗ đỗ xe thiết kế quy hoạch của phân khu Căn hộ là 1.",
+          "result": "WRONG - queried districts.total_sections (an unrelated measure counting number of districts), answered \"1\""
+        },
+        {
+          "run": 4,
+          "source": "2026-08-19 re-verification, browser UI, attempt 2",
+          "query": "same pattern as run 3 (districts.total_sections)",
+          "data": null,
+          "answer": "Tổng số chỗ đỗ xe thiết kế quy hoạch của phân khu Căn hộ là 1.",
+          "result": "WRONG - identical failure to run 3"
+        },
+        {
+          "run": 5,
+          "source": "2026-08-19 re-verification, browser UI, attempt 3",
+          "query": "same pattern as run 3 (districts.total_sections)",
+          "data": null,
+          "answer": "Tổng số chỗ đỗ xe thiết kế quy hoạch của phân khu Căn hộ là 1.",
+          "result": "WRONG - identical failure to run 3 and 4"
+        }
+      ],
+      "ground_truth_verified_via_cube_api": {
+        "query": {
+          "dimensions": [
+            "districts.total_parking_slots"
+          ],
+          "filters": [
+            {
+              "member": "districts.name",
+              "operator": "equals",
+              "values": [
+                "Can ho"
+              ]
+            }
+          ]
+        },
+        "result": {
+          "districts.total_parking_slots": 100
+        }
+      }
     },
     "G06": {
       "question": "Tổng điện năng tiêu thụ chiếu sáng ở TTTM từ ngày 21/7 đến ngày 25/7 là bao nhiêu kWh?",
