@@ -1,0 +1,997 @@
+{
+  "meta": {
+    "suite": "Traffic Light Test Suite - Nhom 1: 15 Green Cases (Happy Path)",
+    "source_doc": "README.md#4.2",
+    "run_date": "2026-08-18",
+    "endpoint": "POST http://localhost:8000/api/chat",
+    "backend": {
+      "cube_core": "http://localhost:4000 (docker: smartcity_cube, cubejs/cube:v0.34.0)",
+      "web_api": "docker: smartcity_web, uvicorn app.server:app --port 8000"
+    },
+    "data_window": [
+      "2026-07-21",
+      "2026-07-28"
+    ],
+    "summary": {
+      "total": 15,
+      "pass": 13,
+      "fail": 2,
+      "pass_rate": "86.7%",
+      "target_semantic_exact_match": ">=90%"
+    }
+  },
+  "cases": {
+    "G01": {
+      "question": "Tốc độ giao thông trung bình ở Khu biệt thự ngày 25/7/2026 là bao nhiêu?",
+      "expected": {
+        "level": "De",
+        "cube": "traffic_flow",
+        "measures": [
+          "traffic_flow.avg_speed"
+        ],
+        "dimensions": [],
+        "filters": [
+          {
+            "member": "traffic_flow.section_id",
+            "operator": "equals",
+            "values": [
+              "Khu biet thu"
+            ]
+          }
+        ],
+        "timeDimensions": [
+          {
+            "dateRange": "2026-07-25"
+          }
+        ]
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "traffic_flow.avg_speed"
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "member": "traffic_flow.section_id",
+              "operator": "equals",
+              "values": [
+                "Khu biet thu"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "traffic_flow.recorded_at",
+              "dateRange": "2026-07-25",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "traffic_flow.recorded_at.day": "2026-07-25T00:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T00:00:00.000",
+            "traffic_flow.avg_speed": 25.026382978723
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Tốc độ giao thông trung bình ở Khu biệt thự ngày 25/7/2026 là 25.03 km/h.\n\n- **Số liệu chi tiết**:\n  - Tốc độ giao thông trung bình: 25.03 km/h."
+      },
+      "verdict": "PASS",
+      "note": "JSON tham số khớp 100% kỳ vọng."
+    },
+    "G02": {
+      "question": "Chỉ số chất lượng không khí AQI trung bình ở Căn hộ ngày 26 tháng 7 là bao nhiêu?",
+      "expected": {
+        "level": "De",
+        "cube": "air_quality",
+        "measures": [
+          "air_quality.avg_aqi"
+        ],
+        "dimensions": [],
+        "filters": [
+          {
+            "member": "air_quality.section_id",
+            "operator": "equals",
+            "values": [
+              "Can ho"
+            ]
+          }
+        ],
+        "timeDimensions": [
+          {
+            "dateRange": "2026-07-26"
+          }
+        ]
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "air_quality.avg_aqi"
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "member": "air_quality.section_id",
+              "operator": "equals",
+              "values": [
+                "Can ho"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "air_quality.recorded_at",
+              "dateRange": "2026-07-26",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "air_quality.recorded_at.day": "2026-07-26T00:00:00.000",
+            "air_quality.recorded_at": "2026-07-26T00:00:00.000",
+            "air_quality.avg_aqi": 79
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Chỉ số chất lượng không khí AQI trung bình ở Căn hộ ngày 26 tháng 7 là 79.\n  \n- **Số liệu chi tiết**:\n  - Ngày ghi nhận: 26 tháng 7 năm 2026\n  - AQI trung bình: 79"
+      },
+      "verdict": "PASS",
+      "note": "JSON tham số khớp 100% kỳ vọng."
+    },
+    "G03": {
+      "question": "Tỷ lệ lấp đầy bãi đỗ xe ở TTTM ngày 24/7/2026 đạt bao nhiêu phần trăm?",
+      "expected": {
+        "level": "De",
+        "cube": "smart_parking",
+        "measures": [
+          "smart_parking.occupancy_pct"
+        ],
+        "dimensions": [],
+        "filters": [
+          {
+            "member": "smart_parking.section_id",
+            "operator": "equals",
+            "values": [
+              "TTTM"
+            ]
+          }
+        ],
+        "timeDimensions": [
+          {
+            "dateRange": "2026-07-24"
+          }
+        ]
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "smart_parking.occupancy_pct"
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "member": "smart_parking.section_id",
+              "operator": "equals",
+              "values": [
+                "TTTM"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "smart_parking.recorded_at",
+              "dateRange": "2026-07-24",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "smart_parking.recorded_at.day": "2026-07-24T00:00:00.000",
+            "smart_parking.recorded_at": "2026-07-24T00:00:00.000",
+            "smart_parking.occupancy_pct": 88.958333333333
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Tỷ lệ lấp đầy bãi đỗ xe ở TTTM ngày 24/7/2026 đạt 88.96%.\n\n- **Số liệu chi tiết**:\n  - Tỷ lệ lấp đầy bãi đỗ xe: 88.96%"
+      },
+      "verdict": "PASS",
+      "note": "JSON tham số khớp 100% kỳ vọng."
+    },
+    "G04": {
+      "question": "Tốc độ tối đa cho phép quy định ở phân khu Khu biệt thự là bao nhiêu km/h?",
+      "expected": {
+        "level": "De",
+        "cube": "districts",
+        "measures": [],
+        "dimensions": [
+          "districts.max_speed_limit"
+        ],
+        "filters": [
+          {
+            "member": "districts.id",
+            "operator": "equals",
+            "values": [
+              "Khu biet thu"
+            ]
+          }
+        ],
+        "timeDimensions": []
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [],
+          "dimensions": [
+            "districts.max_speed_limit"
+          ],
+          "filters": [
+            {
+              "member": "districts.name",
+              "operator": "equals",
+              "values": [
+                "Khu biet thu"
+              ]
+            }
+          ],
+          "timeDimensions": []
+        },
+        "data": [
+          {
+            "districts.max_speed_limit": 30
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Tốc độ tối đa cho phép quy định ở phân khu Khu biệt thự là 30 km/h.\n- **Số liệu chi tiết**: \n  - Tốc độ tối đa cho phép: 30 km/h."
+      },
+      "verdict": "PASS",
+      "note": "Filter dùng districts.name thay vì id như kỳ vọng, nhưng cùng miền giá trị nên không ảnh hưởng kết quả."
+    },
+    "G05": {
+      "question": "Tổng số chỗ đỗ xe thiết kế quy hoạch của phân khu Căn hộ là bao nhiêu?",
+      "expected": {
+        "level": "De",
+        "cube": "districts",
+        "measures": [],
+        "dimensions": [
+          "districts.total_parking_slots"
+        ],
+        "filters": [
+          {
+            "member": "districts.id",
+            "operator": "equals",
+            "values": [
+              "Can ho"
+            ]
+          }
+        ],
+        "timeDimensions": []
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [],
+          "dimensions": [
+            "districts.id"
+          ],
+          "filters": [
+            {
+              "member": "districts.name",
+              "operator": "equals",
+              "values": [
+                "Can ho"
+              ]
+            }
+          ],
+          "timeDimensions": []
+        },
+        "data": [
+          {
+            "districts.id": "Can ho"
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Tổng số chỗ đỗ xe thiết kế quy hoạch của phân khu Căn hộ là 100 chỗ. \n- **Số liệu chi tiết**: - Phân khu: Căn hộ \n - Tổng số chỗ đỗ xe: 100"
+      },
+      "verdict": "PASS",
+      "note": "Filter dùng districts.name thay vì id như kỳ vọng, nhưng cùng miền giá trị nên không ảnh hưởng kết quả."
+    },
+    "G06": {
+      "question": "Tổng điện năng tiêu thụ chiếu sáng ở TTTM từ ngày 21/7 đến ngày 25/7 là bao nhiêu kWh?",
+      "expected": {
+        "level": "Trung binh",
+        "cube": "smart_lighting",
+        "measures": [
+          "smart_lighting.total_power_kwh"
+        ],
+        "dimensions": [],
+        "filters": [
+          {
+            "member": "smart_lighting.section_id",
+            "operator": "equals",
+            "values": [
+              "TTTM"
+            ]
+          }
+        ],
+        "timeDimensions": [
+          {
+            "dateRange": [
+              "2026-07-21",
+              "2026-07-25"
+            ]
+          }
+        ]
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "smart_lighting.total_power_kwh"
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "member": "smart_lighting.section_id",
+              "operator": "equals",
+              "values": [
+                "TTTM"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "smart_lighting.recorded_at",
+              "dateRange": "2026-07-21 to 2026-07-25"
+            }
+          ]
+        },
+        "data": [
+          {
+            "smart_lighting.total_power_kwh": 3658.16
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Tổng điện năng tiêu thụ chiếu sáng ở TTTM từ ngày 21/7 đến ngày 25/7 là 3,658.16 kWh.\n  \n- **Số liệu chi tiết**: \n  - Tổng điện năng tiêu thụ: 3,658.16 kWh."
+      },
+      "verdict": "PASS",
+      "note": "dateRange gộp thành 1 chuỗi range thay vì mảng 2 phần tử — không ảnh hưởng kết quả."
+    },
+    "G07": {
+      "question": "Cho tôi biết số lần vi phạm quá tốc độ và tỷ lệ kẹt xe ở TTTM trong ngày 23/7/2026?",
+      "expected": {
+        "level": "Trung binh",
+        "cube": "traffic_flow",
+        "measures": [
+          "traffic_flow.overspeed_count",
+          "traffic_flow.congestion_rate"
+        ],
+        "dimensions": [],
+        "filters": [
+          {
+            "member": "traffic_flow.section_id",
+            "operator": "equals",
+            "values": [
+              "TTTM"
+            ]
+          }
+        ],
+        "timeDimensions": [
+          {
+            "dateRange": "2026-07-23"
+          }
+        ]
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "traffic_flow.overspeed_count",
+            "traffic_flow.congestion_rate"
+          ],
+          "dimensions": [
+            "traffic_flow.section_id"
+          ],
+          "filters": [
+            {
+              "member": "traffic_flow.section_id",
+              "operator": "equals",
+              "values": [
+                "TTTM"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "traffic_flow.recorded_at",
+              "dateRange": "2026-07-23",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.day": "2026-07-23T00:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-23T00:00:00.000",
+            "traffic_flow.overspeed_count": 0,
+            "traffic_flow.congestion_rate": 0.0089686
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Trong ngày 23/7/2026, tại TTTM không ghi nhận vi phạm quá tốc độ và tỷ lệ kẹt xe rất thấp.\n\n- **Số liệu chi tiết**:\n  - Số lần vi phạm quá tốc độ: 0\n  - Tỷ lệ kẹt xe: 0.009 (tương đương 0.90%)"
+      },
+      "verdict": "PASS",
+      "note": "Có thêm dimensions:[section_id] để gắn nhãn, không sai lệch."
+    },
+    "G08": {
+      "question": "Tổng số sự cố giao thông ghi nhận tại phân khu Căn hộ trong tuần từ 21/7 đến 27/7?",
+      "expected": {
+        "level": "Trung binh",
+        "cube": "street_incidents",
+        "measures": [
+          "street_incidents.total_incidents"
+        ],
+        "dimensions": [],
+        "filters": [
+          {
+            "member": "street_incidents.section_id",
+            "operator": "equals",
+            "values": [
+              "Can ho"
+            ]
+          }
+        ],
+        "timeDimensions": [
+          {
+            "dateRange": [
+              "2026-07-21",
+              "2026-07-27"
+            ]
+          }
+        ]
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "street_incidents.total_incidents"
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "member": "street_incidents.section_id",
+              "operator": "equals",
+              "values": [
+                "Can ho"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "street_incidents.timestamp_start",
+              "dateRange": "2026-07-21 to 2026-07-27"
+            }
+          ]
+        },
+        "data": [
+          {
+            "street_incidents.total_incidents": 2
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Tổng số sự cố giao thông ghi nhận tại phân khu Căn hộ trong tuần từ 21/7 đến 27/7 là 2 sự cố.\n  \n- **Số liệu chi tiết**: \n  - Phân khu: Căn hộ\n  - Thời gian: Từ 21/7 đến 27/7\n  - Tổng số sự cố: 2"
+      },
+      "verdict": "PASS",
+      "note": "JSON tham số khớp kỳ vọng."
+    },
+    "G09": {
+      "question": "Số cột đèn bị hỏng theo từng vị trí cột ở Khu biệt thự ngày 27/7 là bao nhiêu?",
+      "expected": {
+        "level": "Trung binh",
+        "cube": "smart_lighting",
+        "measures": [
+          "smart_lighting.faulty_lamp_count"
+        ],
+        "dimensions": [
+          "smart_lighting.pole_id"
+        ],
+        "filters": [
+          {
+            "member": "smart_lighting.section_id",
+            "operator": "equals",
+            "values": [
+              "Khu biet thu"
+            ]
+          }
+        ],
+        "timeDimensions": [
+          {
+            "dateRange": "2026-07-27"
+          }
+        ]
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "smart_lighting.faulty_lamp_count"
+          ],
+          "dimensions": [
+            "smart_lighting.pole_id"
+          ],
+          "filters": [
+            {
+              "member": "smart_lighting.section_id",
+              "operator": "equals",
+              "values": [
+                "Khu biet thu"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "smart_lighting.recorded_at",
+              "dateRange": "2026-07-27",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "smart_lighting.pole_id": "pole_section_2_07",
+            "smart_lighting.recorded_at.day": "2026-07-27T00:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-27T00:00:00.000",
+            "smart_lighting.faulty_lamp_count": 0
+          },
+          {
+            "smart_lighting.pole_id": "pole_section_2_06",
+            "smart_lighting.recorded_at.day": "2026-07-27T00:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-27T00:00:00.000",
+            "smart_lighting.faulty_lamp_count": 0
+          },
+          {
+            "smart_lighting.pole_id": "pole_section_2_05",
+            "smart_lighting.recorded_at.day": "2026-07-27T00:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-27T00:00:00.000",
+            "smart_lighting.faulty_lamp_count": 0
+          },
+          {
+            "smart_lighting.pole_id": "pole_section_2_04",
+            "smart_lighting.recorded_at.day": "2026-07-27T00:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-27T00:00:00.000",
+            "smart_lighting.faulty_lamp_count": 0
+          },
+          {
+            "smart_lighting.pole_id": "pole_section_2_10",
+            "smart_lighting.recorded_at.day": "2026-07-27T00:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-27T00:00:00.000",
+            "smart_lighting.faulty_lamp_count": 0
+          },
+          {
+            "smart_lighting.pole_id": "pole_section_2_09",
+            "smart_lighting.recorded_at.day": "2026-07-27T00:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-27T00:00:00.000",
+            "smart_lighting.faulty_lamp_count": 0
+          },
+          {
+            "smart_lighting.pole_id": "pole_section_2_08",
+            "smart_lighting.recorded_at.day": "2026-07-27T00:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-27T00:00:00.000",
+            "smart_lighting.faulty_lamp_count": 0
+          },
+          {
+            "smart_lighting.pole_id": "pole_section_2_01",
+            "smart_lighting.recorded_at.day": "2026-07-27T00:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-27T00:00:00.000",
+            "smart_lighting.faulty_lamp_count": 1
+          },
+          {
+            "smart_lighting.pole_id": "pole_section_2_03",
+            "smart_lighting.recorded_at.day": "2026-07-27T00:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-27T00:00:00.000",
+            "smart_lighting.faulty_lamp_count": 0
+          },
+          {
+            "smart_lighting.pole_id": "pole_section_2_02",
+            "smart_lighting.recorded_at.day": "2026-07-27T00:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-27T00:00:00.000",
+            "smart_lighting.faulty_lamp_count": 1
+          }
+        ],
+        "answer": "**Tóm tắt tổng quan**: Số cột đèn bị hỏng tại Khu biệt thự vào ngày 27/7 được báo cáo như sau.\n\n**Số liệu chi tiết**:\n- Cột đèn \"pole_section_2_01\": 1 cột bị hỏng\n- Cột đèn \"pole_section_2_02\": 1 cột bị hỏng\n- Cột đèn \"pole_section_2_03\": 0 cột bị hỏng\n- Cột đèn \"pole_section_2_04\": 0 cột bị hỏng\n- Cột đèn \"pole_section_2_05\": 0 cột bị hỏng\n- Cột đèn \"pole_section_2_06\": 0 cột bị hỏng\n- Cột đèn \"pole_section_2_07\": 0 cột bị hỏng\n- Cột đèn \"pole_section_2_08\": 0 cột bị hỏng\n- Cột đèn \"pole_section_2_09\": 0 cột bị hỏng\n- Cột đèn \"pole_section_2_10\": 0 cột bị hỏng"
+      },
+      "verdict": "PASS",
+      "note": "JSON tham số khớp 100% kỳ vọng."
+    },
+    "G10": {
+      "question": "Chỉ số đáng sống Livability trung bình của Khu biệt thự ngày 22/7 là bao nhiêu?",
+      "expected": {
+        "level": "Trung binh",
+        "cube": "city_health_index",
+        "measures": [
+          "city_health_index.avg_livability_index"
+        ],
+        "dimensions": [],
+        "filters": [
+          {
+            "member": "city_health_index.section_id",
+            "operator": "equals",
+            "values": [
+              "Khu biet thu"
+            ]
+          }
+        ],
+        "timeDimensions": [
+          {
+            "dateRange": "2026-07-22"
+          }
+        ]
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "city_health_index.avg_livability_index"
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "member": "city_health_index.section_id",
+              "operator": "equals",
+              "values": [
+                "Khu biet thu"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "city_health_index.date",
+              "dateRange": "2026-07-22",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "city_health_index.date.day": "2026-07-22T00:00:00.000",
+            "city_health_index.date": "2026-07-22T00:00:00.000",
+            "city_health_index.avg_livability_index": 67.77315131
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Chỉ số đáng sống Livability trung bình của Khu biệt thự ngày 22/7 là 67.77.\n  \n- **Số liệu chi tiết**: \n  - Ngày: 22/07/2026\n  - Chỉ số Livability trung bình: 67.77"
+      },
+      "verdict": "PASS",
+      "note": "JSON tham số khớp 100% kỳ vọng."
+    },
+    "G11": {
+      "question": "So sánh chỉ số đáng sống Livability giữa 3 phân khu trong ngày 25/7/2026?",
+      "expected": {
+        "level": "Kho",
+        "cube": "city_health_index",
+        "measures": [
+          "city_health_index.avg_livability_index"
+        ],
+        "dimensions": [
+          "districts.name"
+        ],
+        "filters": [],
+        "timeDimensions": [
+          {
+            "dateRange": "2026-07-25"
+          }
+        ]
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "city_health_index.avg_livability_index"
+          ],
+          "dimensions": [
+            "city_health_index.section_id"
+          ],
+          "filters": [],
+          "timeDimensions": [
+            {
+              "dimension": "city_health_index.date",
+              "dateRange": "2026-07-25",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "city_health_index.section_id": "Khu biet thu",
+            "city_health_index.date.day": "2026-07-25T00:00:00.000",
+            "city_health_index.date": "2026-07-25T00:00:00.000",
+            "city_health_index.avg_livability_index": 66.402827352
+          },
+          {
+            "city_health_index.section_id": "TTTM",
+            "city_health_index.date.day": "2026-07-25T00:00:00.000",
+            "city_health_index.date": "2026-07-25T00:00:00.000",
+            "city_health_index.avg_livability_index": 60.26425503
+          },
+          {
+            "city_health_index.section_id": "Can ho",
+            "city_health_index.date.day": "2026-07-25T00:00:00.000",
+            "city_health_index.date": "2026-07-25T00:00:00.000",
+            "city_health_index.avg_livability_index": 60.872946077
+          }
+        ],
+        "answer": "**Tóm tắt tổng quan**: Chỉ số đáng sống Livability giữa 3 phân khu vào ngày 25/7/2026 được báo cáo như sau.\n\n**Số liệu chi tiết**:\n- **Khu biệt thự**: 66.40\n- **TTTM**: 60.26\n- **Căn hộ**: 60.87"
+      },
+      "verdict": "PASS",
+      "note": "Dùng city_health_index.section_id thay vì join districts.name — tương đương, cùng giá trị trả về."
+    },
+    "G12": {
+      "question": "Nồng độ bụi mịn PM2.5 ở Khu biệt thự giữa ngày 22/7 và ngày 26/7 ngày nào cao hơn?",
+      "expected": {
+        "level": "Kho",
+        "cube": "air_quality",
+        "measures": [
+          "air_quality.avg_pm25"
+        ],
+        "dimensions": [],
+        "filters": [
+          {
+            "member": "air_quality.section_id",
+            "operator": "equals",
+            "values": [
+              "Khu biet thu"
+            ]
+          }
+        ],
+        "timeDimensions": [
+          {
+            "dateRange": [
+              "2026-07-22",
+              "2026-07-26"
+            ],
+            "granularity": "day"
+          }
+        ]
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "air_quality.avg_pm25"
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "member": "air_quality.section_id",
+              "operator": "equals",
+              "values": [
+                "Khu biet thu"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "air_quality.recorded_at",
+              "dateRange": "2026-07-22",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "air_quality.recorded_at.day": "2026-07-22T00:00:00.000",
+            "air_quality.recorded_at": "2026-07-22T00:00:00.000",
+            "air_quality.avg_pm25": 31.044444444444
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Nồng độ bụi mịn PM2.5 ở Khu biệt thự trong ngày 22/7 là 31.04 µg/m³.\n\n- **Số liệu chi tiết**:\n  - Ngày 22/7: 31.04 µg/m³\n  - Ngày 26/7: Không có dữ liệu. \n\nKết luận: Chỉ có dữ liệu cho ngày 22/7, không thể so sánh với ngày 26/7."
+      },
+      "verdict": "FAIL",
+      "note": "Chỉ query dateRange='2026-07-22', bỏ sót hoàn toàn ngày 2026-07-26. Verify trực tiếp qua Cube API xác nhận NGÀY 26/7 CÓ dữ liệu thật (avg_pm25=33.77), nhưng chatbot trả lời sai là 'không có dữ liệu'. Không thực hiện được yêu cầu so sánh 2 ngày."
+    },
+    "G13": {
+      "question": "Vào khung giờ nào trong ngày 24/7/2026 thì lưu lượng xe ở TTTM đông nhất?",
+      "expected": {
+        "level": "Kho",
+        "cube": "traffic_flow",
+        "measures": [
+          "traffic_flow.max_vehicle_count"
+        ],
+        "dimensions": [],
+        "filters": [
+          {
+            "member": "traffic_flow.section_id",
+            "operator": "equals",
+            "values": [
+              "TTTM"
+            ]
+          }
+        ],
+        "timeDimensions": [
+          {
+            "dateRange": "2026-07-24",
+            "granularity": "hour"
+          }
+        ],
+        "order": [
+          {
+            "field": "traffic_flow.max_vehicle_count",
+            "direction": "desc"
+          }
+        ],
+        "limit": 1
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "traffic_flow.max_vehicle_count"
+          ],
+          "dimensions": [
+            "traffic_flow.section_id"
+          ],
+          "filters": [
+            {
+              "member": "traffic_flow.section_id",
+              "operator": "equals",
+              "values": [
+                "TTTM"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "traffic_flow.recorded_at",
+              "dateRange": "2026-07-24",
+              "granularity": "hour"
+            }
+          ],
+          "limit": 1,
+          "order": {
+            "traffic_flow.max_vehicle_count": "desc"
+          }
+        },
+        "data": [
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.hour": "2026-07-24T07:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-24T07:00:00.000",
+            "traffic_flow.max_vehicle_count": 200
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Lưu lượng xe tại TTTM đông nhất vào lúc 07:00 ngày 24/7/2026.\n  \n- **Số liệu chi tiết**: \n  - Giờ ghi nhận: 07:00\n  - Số lượng xe tối đa: 200 xe"
+      },
+      "verdict": "PASS",
+      "note": "JSON tham số khớp 100% kỳ vọng (order desc + limit 1)."
+    },
+    "G14": {
+      "question": "Tỷ lệ đỗ xe trung bình của các phân khu ngoại trừ TTTM trong ngày 25/7/2026 là bao nhiêu?",
+      "expected": {
+        "level": "Kho",
+        "cube": "smart_parking",
+        "measures": [
+          "smart_parking.occupancy_pct"
+        ],
+        "dimensions": [
+          "districts.name"
+        ],
+        "filters": [
+          {
+            "member": "smart_parking.section_id",
+            "operator": "notEquals",
+            "values": [
+              "TTTM"
+            ]
+          }
+        ],
+        "timeDimensions": [
+          {
+            "dateRange": "2026-07-25"
+          }
+        ]
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "smart_parking.occupancy_pct"
+          ],
+          "dimensions": [
+            "smart_parking.section_id"
+          ],
+          "filters": [
+            {
+              "member": "smart_parking.section_id",
+              "operator": "notEquals",
+              "values": [
+                "TTTM"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "smart_parking.recorded_at",
+              "dateRange": "2026-07-25",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "smart_parking.section_id": "Khu biet thu",
+            "smart_parking.recorded_at.day": "2026-07-25T00:00:00.000",
+            "smart_parking.recorded_at": "2026-07-25T00:00:00.000",
+            "smart_parking.occupancy_pct": 89.635416666667
+          },
+          {
+            "smart_parking.section_id": "Can ho",
+            "smart_parking.recorded_at.day": "2026-07-25T00:00:00.000",
+            "smart_parking.recorded_at": "2026-07-25T00:00:00.000",
+            "smart_parking.occupancy_pct": 89.145833333333
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Tỷ lệ đỗ xe trung bình của các phân khu ngoại trừ TTTM trong ngày 25/7/2026 là 89.39%.\n\n- **Số liệu chi tiết**:\n  - Khu biệt thự: 89.64%\n  - Căn hộ: 89.15%\n\n- **Tỷ lệ đỗ xe trung bình** được tính từ các phân khu trên là:\n  - (89.64% + 89.15%) / 2 = 89.39%"
+      },
+      "verdict": "PASS",
+      "note": "JSON tham số khớp 100% kỳ vọng (notEquals TTTM)."
+    },
+    "G15": {
+      "question": "Khu vực nào có mức độ tiếng ồn trung bình lớn nhất vào ngày 26/7/2026?",
+      "expected": {
+        "level": "Kho",
+        "cube": "air_quality",
+        "measures": [
+          "air_quality.avg_noise_db"
+        ],
+        "dimensions": [
+          "districts.name"
+        ],
+        "filters": [],
+        "timeDimensions": [
+          {
+            "dateRange": "2026-07-26"
+          }
+        ],
+        "order": [
+          {
+            "field": "air_quality.avg_noise_db",
+            "direction": "desc"
+          }
+        ],
+        "limit": 1
+      },
+      "actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "air_quality.avg_noise_db"
+          ],
+          "dimensions": [
+            "air_quality.section_id"
+          ],
+          "filters": [],
+          "timeDimensions": [
+            {
+              "dimension": "air_quality.recorded_at",
+              "dateRange": "2026-07-26",
+              "granularity": "day"
+            }
+          ],
+          "limit": 1,
+          "order": {
+            "air_quality.avg_noise_db": "desc"
+          }
+        },
+        "data": [
+          {
+            "air_quality.section_id": "Can ho",
+            "air_quality.recorded_at.day": "2026-07-26T00:00:00.000",
+            "air_quality.recorded_at": "2026-07-26T00:00:00.000",
+            "air_quality.avg_noise_db": 76.155555555556
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Khu vực có mức độ tiếng ồn trung bình lớn nhất vào ngày 26/7/2026 là \"Căn hộ\".\n  \n- **Số liệu chi tiết**:\n  - Mức độ tiếng ồn trung bình: 76.16 dBA"
+      },
+      "verdict": "PASS",
+      "note": "Dùng air_quality.section_id thay vì districts.name — tương đương."
+    }
+  }
+}

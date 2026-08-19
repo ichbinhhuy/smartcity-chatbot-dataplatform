@@ -1,0 +1,1631 @@
+{
+  "meta": {
+    "suite": "Traffic Light Test Suite - Nhom 2: 10 Yellow Cases (Ambiguous - Clarification)",
+    "source_doc": "README.md#4.2",
+    "run_date": "2026-08-18",
+    "endpoint": "POST http://localhost:8000/api/chat",
+    "backend": {
+      "cube_core": "http://localhost:4000 (docker: smartcity_cube, cubejs/cube:v0.34.0)",
+      "web_api": "docker: smartcity_web, uvicorn app.server:app --port 8000",
+      "starrocks_db": "starrocks_gold via docker: smartcity_starrocks (MySQL protocol :9030)"
+    },
+    "data_window": [
+      "2026-07-21",
+      "2026-07-28"
+    ],
+    "summary": {
+      "total": 10,
+      "pass": 0,
+      "fail": 10,
+      "pass_rate": "0%",
+      "target_routing_clarification_precision": ">=90%",
+      "key_finding": "9/10 cases return status=success at T1 instead of clarification (NLU guesses instead of asking). The 1 case that did return clarification (Y06) asked the wrong kind of question. Multi-turn cases (Y01, Y03) also lose T1 filter/time context when merging T2. Y03 additionally exposes a schema/data mismatch: street_incidents.yml documents incident_type enum as ACCIDENT/FLOOD/CONSTRUCTION/CONGESTION but the real StarRocks fact_incident table only contains road_work/accident/traffic_light_failure."
+    },
+    "reverification_2026-08-19": {
+      "reason": "User flagged that the browser may have been refreshed between T1 and T2 in the original multi-turn test, invalidating T2 context.",
+      "method": "Re-ran Y01, Y02, Y03 multi-turn cases through the Chrome UI with explicit, tracked action sequences confirming ZERO navigate/reload calls between T1 and T2 within each case (only navigating once, fresh, at the START of each case). Verified via screenshots and by expanding the Structured Cube Query JSON panel after each turn.",
+      "result": "Findings fully reproduced with no page refresh between turns: Y01 T2 still lost the time context (dateRange reset to \"last 30 days\" instead of the T1 week 2026-07-21..28) while correctly keeping the district filter (Can ho) from history. Y02 T2 correctly kept BOTH the district (TTTM) and date (2026-07-27) from T1 - this case actually works correctly. Y03 T2 still lost BOTH the district filter (TTTM) and the date (2026-07-28) from T1, keeping only incident_type which was stated explicitly in the T2 question text itself. Conclusion: the T1/T2 context-merge bug in Y01 and Y03 is a genuine backend/orchestrator issue, not an artifact of the browser being reloaded between turns."
+    }
+  },
+  "cases": {
+    "Y01": {
+      "type": "multi",
+      "expected": {
+        "type": "multi",
+        "cube": "city_health_index",
+        "t1_expected_status": "clarification",
+        "ambiguity": "Metric mo ho (6 metric ngang hang): avg_livability_index, avg_traffic_score, avg_env_score, avg_parking_score, avg_lighting_score, avg_safety_score",
+        "t2_expected_query": {
+          "measures": [
+            "city_health_index.avg_traffic_score"
+          ],
+          "filters": [
+            {
+              "member": "section_id",
+              "values": [
+                "Can ho"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dateRange": [
+                "2026-07-21",
+                "2026-07-28"
+              ]
+            }
+          ]
+        }
+      },
+      "t1_question": "Kết quả đánh giá đô thị ở Khu Căn hộ trong tuần 21-28/7",
+      "t1_actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "city_health_index.avg_livability_index",
+            "city_health_index.min_livability_index",
+            "city_health_index.max_livability_index",
+            "city_health_index.avg_traffic_score",
+            "city_health_index.avg_env_score",
+            "city_health_index.avg_parking_score",
+            "city_health_index.avg_lighting_score",
+            "city_health_index.avg_safety_score"
+          ],
+          "dimensions": [
+            "city_health_index.section_id"
+          ],
+          "filters": [
+            {
+              "member": "city_health_index.section_id",
+              "operator": "equals",
+              "values": [
+                "Can ho"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "city_health_index.date",
+              "dateRange": "2026-07-21 to 2026-07-28"
+            }
+          ]
+        },
+        "data": [
+          {
+            "city_health_index.section_id": "Can ho",
+            "city_health_index.avg_livability_index": 65.332310951,
+            "city_health_index.min_livability_index": 60.872946077,
+            "city_health_index.max_livability_index": 70.729436519,
+            "city_health_index.avg_traffic_score": 82.505154097975,
+            "city_health_index.avg_env_score": 19.7974415205,
+            "city_health_index.avg_parking_score": 64.3936481829578,
+            "city_health_index.avg_lighting_score": 93.77417,
+            "city_health_index.avg_safety_score": 92.5
+          }
+        ],
+        "answer": "**Tóm tắt tổng quan**: Kết quả đánh giá đô thị tại Khu Căn hộ trong tuần từ 21-28/7 cho thấy các chỉ số livability và an toàn cao.\n\n**Số liệu chi tiết**:\n- **Chỉ số sống tốt trung bình (avg livability index)**: 65.33\n- **Chỉ số sống tốt thấp nhất (min livability index)**: 60.87\n- **Chỉ số sống tốt cao nhất (max livability index)**: 70.73\n- **Điểm thành phần giao thông (avg traffic score)**: 82.51\n- **Điểm thành phần môi trường (avg env score)**: 19.80\n- **Điểm thành phần bãi đỗ xe (avg parking score)**: 64.39\n- **Điểm thành phần chiếu sáng (avg lighting score)**: 93.77\n- **Điểm thành phần an toàn (avg safety score)**: 92.50",
+        "suggestions": null
+      },
+      "verdict": "FAIL",
+      "note": "T1 tra 'success' voi ca 8 measures gop chung thay vi hoi lai. T2: measure dung (avg_traffic_score=82.51) nhung mat ngu canh thoi gian T1 (tu doi week 21-28/7 thanh default 'last 30 days').",
+      "t2_question": "Xem điểm thành phần giao thông",
+      "t2_actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "city_health_index.avg_traffic_score"
+          ],
+          "dimensions": [
+            "city_health_index.section_id"
+          ],
+          "filters": [
+            {
+              "member": "city_health_index.section_id",
+              "operator": "equals",
+              "values": [
+                "Can ho"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "city_health_index.date",
+              "dateRange": "last 30 days"
+            }
+          ]
+        },
+        "data": [
+          {
+            "city_health_index.section_id": "Can ho",
+            "city_health_index.avg_traffic_score": 82.505154097975
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Điểm thành phần giao thông của khu vực \"Căn hộ\" trong khoảng thời gian từ 19/07/2026 đến 17/08/2026 là 82.51.\n\n- **Số liệu chi tiết**:\n  - Khu vực: Căn hộ\n  - Điểm thành phần giao thông (trong chỉ số livability): 82.51"
+      }
+    },
+    "Y02": {
+      "type": "multi",
+      "expected": {
+        "type": "multi",
+        "cube": "air_quality",
+        "t1_expected_status": "clarification",
+        "ambiguity": "Da chu de con trong 1 bang: AQI, PM2.5, Noise, unhealthy_air_hours",
+        "t2_expected_query": {
+          "measures": [
+            "air_quality.avg_pm25"
+          ],
+          "filters": [
+            {
+              "member": "section_id",
+              "values": [
+                "TTTM"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dateRange": "2026-07-27"
+            }
+          ]
+        }
+      },
+      "t1_question": "Chất lượng không khí và tiếng ồn ở TTTM ngày 27/7",
+      "t1_actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "air_quality.avg_aqi",
+            "air_quality.avg_noise_db"
+          ],
+          "dimensions": [
+            "air_quality.section_id"
+          ],
+          "filters": [
+            {
+              "member": "air_quality.section_id",
+              "operator": "equals",
+              "values": [
+                "TTTM"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "air_quality.recorded_at",
+              "dateRange": "2026-07-27",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "air_quality.section_id": "TTTM",
+            "air_quality.recorded_at.day": "2026-07-27T00:00:00.000",
+            "air_quality.recorded_at": "2026-07-27T00:00:00.000",
+            "air_quality.avg_aqi": 85.61111111111111,
+            "air_quality.avg_noise_db": 72.972222222222
+          }
+        ],
+        "answer": "**Tóm tắt tổng quan**: Chất lượng không khí và tiếng ồn tại TTTM vào ngày 27/7 có chỉ số AQI trung bình là 85.61 và mức độ tiếng ồn trung bình là 72.97 dBA.\n\n**Số liệu chi tiết**:\n- **Chỉ số chất lượng không khí trung bình (AQI)**: 85.61\n- **Mức độ tiếng ồn trung bình (dBA)**: 72.97",
+        "suggestions": null
+      },
+      "verdict": "FAIL",
+      "note": "T1 tra 'success', tu gop 2 measures (avg_aqi, avg_noise_db) thay vi hoi lai giua 4 lua chon. T2 rieng le dung 100% ky vong nhung chuoi hoi thoai 2 luot nhu thiet ke chua duoc kiem chung dung nghia vi T1 khong hoi.",
+      "t2_question": "Nồng độ bụi mịn PM2.5 trung bình",
+      "t2_actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "air_quality.avg_pm25"
+          ],
+          "dimensions": [
+            "air_quality.section_id"
+          ],
+          "filters": [
+            {
+              "member": "air_quality.section_id",
+              "operator": "equals",
+              "values": [
+                "TTTM"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "air_quality.recorded_at",
+              "dateRange": "2026-07-27",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "air_quality.section_id": "TTTM",
+            "air_quality.recorded_at.day": "2026-07-27T00:00:00.000",
+            "air_quality.recorded_at": "2026-07-27T00:00:00.000",
+            "air_quality.avg_pm25": 34.816666666667
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Nồng độ bụi mịn PM2.5 trung bình tại khu vực TTTM vào ngày 27 tháng 7 năm 2026 là 34.82 µg/m³.\n\n- **Số liệu chi tiết**:\n  - Khu vực: TTTM\n  - Ngày ghi nhận: 27/07/2026\n  - Nồng độ bụi mịn PM2.5 trung bình: 34.82 µg/m³"
+      }
+    },
+    "Y03": {
+      "type": "multi",
+      "expected": {
+        "type": "multi",
+        "cube": "street_incidents",
+        "t1_expected_status": "clarification",
+        "ambiguity": "Cum tu trung gian mo ho 'anh huong': total_incidents, avg_duration_min, total_impact_hours, hoac loc incident_type",
+        "t2_expected_query": {
+          "measures": [
+            "street_incidents.avg_duration_min"
+          ],
+          "filters": [
+            {
+              "member": "section_id",
+              "values": [
+                "TTTM"
+              ]
+            },
+            {
+              "member": "incident_type",
+              "values": [
+                "FLOOD"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dateRange": "2026-07-28"
+            }
+          ]
+        }
+      },
+      "t1_question": "Mức độ ảnh hưởng của sự cố tại TTTM ngày 28/7",
+      "t1_actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "street_incidents.total_impact_hours"
+          ],
+          "dimensions": [
+            "street_incidents.section_id"
+          ],
+          "filters": [
+            {
+              "member": "street_incidents.section_id",
+              "operator": "equals",
+              "values": [
+                "TTTM"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "street_incidents.timestamp_start",
+              "dateRange": "2026-07-28",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [],
+        "answer": "- **Tóm tắt tổng quan**: Không có dữ liệu về mức độ ảnh hưởng của sự cố tại TTTM vào ngày 28/7.\n\n- **Số liệu chi tiết**: \n  - Tổng số giờ ảnh hưởng giao thông: 0 giờ.",
+        "suggestions": null
+      },
+      "verdict": "FAIL nghiem trong",
+      "note": "T1 tra 'success', tu chon total_impact_hours=0 thay vi hoi lai. T2 mat ca filter section_id=TTTM lan dateRange=28/7, sai enum FLOODING vs FLOOD, tra 0 dong. Verify truc tiep StarRocks (fact_incident): incident_type that chi co road_work/accident/traffic_light_failure, KHONG co FLOOD nao - enum mo ta trong street_incidents.yml (ACCIDENT/FLOOD/CONSTRUCTION/CONGESTION) khong khop du lieu that.",
+      "t2_question": "Thời gian xử lý trung bình của sự cố ngập lụt (FLOOD)",
+      "t2_actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "street_incidents.avg_duration_min"
+          ],
+          "dimensions": [
+            "street_incidents.incident_type"
+          ],
+          "filters": [
+            {
+              "member": "street_incidents.incident_type",
+              "operator": "equals",
+              "values": [
+                "FLOODING"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "street_incidents.timestamp_start",
+              "dateRange": "last 30 days"
+            }
+          ]
+        },
+        "data": [],
+        "answer": "- **Tóm tắt tổng quan**: Không có dữ liệu về thời gian xử lý trung bình của sự cố ngập lụt (FLOOD) trong khoảng thời gian đã chỉ định.\n\n- **Số liệu chi tiết**: \n  - Không có số liệu được ghi nhận cho sự cố ngập lụt trong khoảng thời gian từ 19/07/2026 đến 17/08/2026."
+      }
+    },
+    "Y04": {
+      "type": "single",
+      "expected": {
+        "type": "single",
+        "cube": "smart_lighting",
+        "t1_expected_status": "clarification",
+        "ambiguity": "Metric mo ho: total_power_kwh, faulty_lamp_count, faulty_time_pct"
+      },
+      "t1_question": "Hiệu suất hệ thống đèn đường ở Khu Căn hộ đêm 22/7",
+      "t1_actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "smart_lighting.total_records",
+            "smart_lighting.total_power_kwh",
+            "smart_lighting.faulty_lamp_count",
+            "smart_lighting.faulty_event_count",
+            "smart_lighting.faulty_time_pct"
+          ],
+          "dimensions": [
+            "smart_lighting.section_id"
+          ],
+          "filters": [
+            {
+              "member": "smart_lighting.section_id",
+              "operator": "equals",
+              "values": [
+                "Can ho"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "smart_lighting.recorded_at",
+              "dateRange": "2026-07-22",
+              "granularity": "hour"
+            }
+          ]
+        },
+        "data": [
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T00:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T00:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 2,
+            "smart_lighting.faulty_event_count": 6,
+            "smart_lighting.faulty_time_pct": 15
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T01:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T01:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 38.01,
+            "smart_lighting.faulty_lamp_count": 2,
+            "smart_lighting.faulty_event_count": 8,
+            "smart_lighting.faulty_time_pct": 20
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T02:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T02:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 38.38,
+            "smart_lighting.faulty_lamp_count": 2,
+            "smart_lighting.faulty_event_count": 8,
+            "smart_lighting.faulty_time_pct": 20
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T03:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T03:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 37.65,
+            "smart_lighting.faulty_lamp_count": 2,
+            "smart_lighting.faulty_event_count": 8,
+            "smart_lighting.faulty_time_pct": 20
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T04:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T04:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 38.27,
+            "smart_lighting.faulty_lamp_count": 2,
+            "smart_lighting.faulty_event_count": 8,
+            "smart_lighting.faulty_time_pct": 20
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T05:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T05:00:00.000",
+            "smart_lighting.total_records": 39,
+            "smart_lighting.total_power_kwh": 43.08,
+            "smart_lighting.faulty_lamp_count": 2,
+            "smart_lighting.faulty_event_count": 3,
+            "smart_lighting.faulty_time_pct": 7.6923077
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T06:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T06:00:00.000",
+            "smart_lighting.total_records": 38,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 0,
+            "smart_lighting.faulty_event_count": 0,
+            "smart_lighting.faulty_time_pct": 0
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T07:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T07:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 0,
+            "smart_lighting.faulty_event_count": 0,
+            "smart_lighting.faulty_time_pct": 0
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T08:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T08:00:00.000",
+            "smart_lighting.total_records": 38,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 0,
+            "smart_lighting.faulty_event_count": 0,
+            "smart_lighting.faulty_time_pct": 0
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T09:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T09:00:00.000",
+            "smart_lighting.total_records": 39,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 1,
+            "smart_lighting.faulty_event_count": 3,
+            "smart_lighting.faulty_time_pct": 7.6923077
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T10:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T10:00:00.000",
+            "smart_lighting.total_records": 39,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 1,
+            "smart_lighting.faulty_event_count": 3,
+            "smart_lighting.faulty_time_pct": 7.6923077
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T11:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T11:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 2,
+            "smart_lighting.faulty_event_count": 5,
+            "smart_lighting.faulty_time_pct": 12.5
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T12:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T12:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 2,
+            "smart_lighting.faulty_event_count": 8,
+            "smart_lighting.faulty_time_pct": 20
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T13:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T13:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 2,
+            "smart_lighting.faulty_event_count": 8,
+            "smart_lighting.faulty_time_pct": 20
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T14:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T14:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 2,
+            "smart_lighting.faulty_event_count": 5,
+            "smart_lighting.faulty_time_pct": 12.5
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T15:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T15:00:00.000",
+            "smart_lighting.total_records": 38,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 1,
+            "smart_lighting.faulty_event_count": 4,
+            "smart_lighting.faulty_time_pct": 10.5263158
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T16:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T16:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 1,
+            "smart_lighting.faulty_event_count": 3,
+            "smart_lighting.faulty_time_pct": 7.5
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T17:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T17:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 0,
+            "smart_lighting.faulty_lamp_count": 0,
+            "smart_lighting.faulty_event_count": 0,
+            "smart_lighting.faulty_time_pct": 0
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T18:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T18:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 99.7,
+            "smart_lighting.faulty_lamp_count": 0,
+            "smart_lighting.faulty_event_count": 0,
+            "smart_lighting.faulty_time_pct": 0
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T19:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T19:00:00.000",
+            "smart_lighting.total_records": 38,
+            "smart_lighting.total_power_kwh": 94.75,
+            "smart_lighting.faulty_lamp_count": 0,
+            "smart_lighting.faulty_event_count": 0,
+            "smart_lighting.faulty_time_pct": 0
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T20:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T20:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 100.22,
+            "smart_lighting.faulty_lamp_count": 0,
+            "smart_lighting.faulty_event_count": 0,
+            "smart_lighting.faulty_time_pct": 0
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T21:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T21:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 99.98,
+            "smart_lighting.faulty_lamp_count": 0,
+            "smart_lighting.faulty_event_count": 0,
+            "smart_lighting.faulty_time_pct": 0
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T22:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T22:00:00.000",
+            "smart_lighting.total_records": 39,
+            "smart_lighting.total_power_kwh": 97.49,
+            "smart_lighting.faulty_lamp_count": 0,
+            "smart_lighting.faulty_event_count": 0,
+            "smart_lighting.faulty_time_pct": 0
+          },
+          {
+            "smart_lighting.section_id": "Can ho",
+            "smart_lighting.recorded_at.hour": "2026-07-22T23:00:00.000",
+            "smart_lighting.recorded_at": "2026-07-22T23:00:00.000",
+            "smart_lighting.total_records": 40,
+            "smart_lighting.total_power_kwh": 100.68,
+            "smart_lighting.faulty_lamp_count": 0,
+            "smart_lighting.faulty_event_count": 0,
+            "smart_lighting.faulty_time_pct": 0
+          }
+        ],
+        "answer": "**Tóm tắt tổng quan**: Hiệu suất hệ thống đèn đường tại Khu Căn hộ vào đêm 22/7 được ghi nhận với các chỉ số cụ thể.\n\n**Số liệu chi tiết**:\n- Tổng số bản ghi: 40\n- Tổng điện năng tiêu thụ (kWh): 0\n- Số lượng cột đèn bị hỏng: 2\n- Số lượt cảm biến báo hỏng: 6\n- Tỷ lệ thời gian hỏng (%): 15\n\nCác số liệu trên được ghi nhận trong khoảng thời gian từ 00:00 đến 23:59 ngày 22/7.",
+        "suggestions": null
+      },
+      "verdict": "FAIL",
+      "note": "T1 tra 'success', dump 5 measures cung luc o granularity gio (24 dong) thay vi hoi chon 1 trong 3 - lan ca 2 measure ngoai ky vong (total_records, faulty_event_count)."
+    },
+    "Y05": {
+      "type": "single",
+      "expected": {
+        "type": "single",
+        "cube": "traffic_flow",
+        "t1_expected_status": "clarification",
+        "ambiguity": "Metric mo ho: avg_speed, sum_vehicle_count, congestion_rate"
+      },
+      "t1_question": "Tình hình giao thông ở TTTM khung giờ 17h-19h ngày 25/7",
+      "t1_actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "traffic_flow.avg_speed",
+            "traffic_flow.avg_vehicle_count",
+            "traffic_flow.congestion_rate",
+            "traffic_flow.overspeed_count"
+          ],
+          "dimensions": [
+            "traffic_flow.section_id"
+          ],
+          "filters": [
+            {
+              "member": "traffic_flow.section_id",
+              "operator": "equals",
+              "values": [
+                "TTTM"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "traffic_flow.recorded_at",
+              "dateRange": "2026-07-25T17:00:00/2026-07-25T19:00:00",
+              "granularity": "minute"
+            }
+          ]
+        },
+        "data": [
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T00:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T00:00:00.000",
+            "traffic_flow.avg_speed": 8.2,
+            "traffic_flow.avg_vehicle_count": 15,
+            "traffic_flow.congestion_rate": 1,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T00:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T00:15:00.000",
+            "traffic_flow.avg_speed": 7.8,
+            "traffic_flow.avg_vehicle_count": 15,
+            "traffic_flow.congestion_rate": 1,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T00:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T00:30:00.000",
+            "traffic_flow.avg_speed": 7.033333333333,
+            "traffic_flow.avg_vehicle_count": 13,
+            "traffic_flow.congestion_rate": 1,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T00:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T00:45:00.000",
+            "traffic_flow.avg_speed": 22,
+            "traffic_flow.avg_vehicle_count": 31,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T01:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T01:00:00.000",
+            "traffic_flow.avg_speed": 22.7,
+            "traffic_flow.avg_vehicle_count": 20.666666666666668,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T01:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T01:15:00.000",
+            "traffic_flow.avg_speed": 25.4,
+            "traffic_flow.avg_vehicle_count": 18.666666666666668,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T01:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T01:30:00.000",
+            "traffic_flow.avg_speed": 22.566666666667,
+            "traffic_flow.avg_vehicle_count": 17.333333333333332,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T01:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T01:45:00.000",
+            "traffic_flow.avg_speed": 20.6,
+            "traffic_flow.avg_vehicle_count": 20,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T02:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T02:00:00.000",
+            "traffic_flow.avg_speed": 24.9,
+            "traffic_flow.avg_vehicle_count": 18.666666666666668,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T02:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T02:15:00.000",
+            "traffic_flow.avg_speed": 28.033333333333,
+            "traffic_flow.avg_vehicle_count": 18.333333333333332,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T02:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T02:30:00.000",
+            "traffic_flow.avg_speed": 27.166666666667,
+            "traffic_flow.avg_vehicle_count": 16.666666666666668,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T02:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T02:45:00.000",
+            "traffic_flow.avg_speed": 25.4,
+            "traffic_flow.avg_vehicle_count": 14,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T03:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T03:00:00.000",
+            "traffic_flow.avg_speed": 24.266666666667,
+            "traffic_flow.avg_vehicle_count": 15,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T03:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T03:15:00.000",
+            "traffic_flow.avg_speed": 26.133333333333,
+            "traffic_flow.avg_vehicle_count": 19.666666666666668,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T03:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T03:30:00.000",
+            "traffic_flow.avg_speed": 19.933333333333,
+            "traffic_flow.avg_vehicle_count": 11.666666666666666,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T03:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T03:45:00.000",
+            "traffic_flow.avg_speed": 26.5,
+            "traffic_flow.avg_vehicle_count": 12.666666666666666,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T04:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T04:00:00.000",
+            "traffic_flow.avg_speed": 27.466666666667,
+            "traffic_flow.avg_vehicle_count": 17.666666666666668,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T04:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T04:15:00.000",
+            "traffic_flow.avg_speed": 22.9,
+            "traffic_flow.avg_vehicle_count": 12,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T04:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T04:30:00.000",
+            "traffic_flow.avg_speed": 26.366666666667,
+            "traffic_flow.avg_vehicle_count": 10.333333333333334,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T04:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T04:45:00.000",
+            "traffic_flow.avg_speed": 22.766666666667,
+            "traffic_flow.avg_vehicle_count": 13.333333333333334,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T05:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T05:00:00.000",
+            "traffic_flow.avg_speed": 27.3,
+            "traffic_flow.avg_vehicle_count": 71,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T05:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T05:15:00.000",
+            "traffic_flow.avg_speed": 29.4,
+            "traffic_flow.avg_vehicle_count": 61,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T05:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T05:30:00.000",
+            "traffic_flow.avg_speed": 19.333333333333,
+            "traffic_flow.avg_vehicle_count": 50,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T05:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T05:45:00.000",
+            "traffic_flow.avg_speed": 25.233333333333,
+            "traffic_flow.avg_vehicle_count": 48,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T06:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T06:00:00.000",
+            "traffic_flow.avg_speed": 28.7,
+            "traffic_flow.avg_vehicle_count": 92.33333333333333,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T06:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T06:15:00.000",
+            "traffic_flow.avg_speed": 25.233333333333,
+            "traffic_flow.avg_vehicle_count": 81,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T06:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T06:30:00.000",
+            "traffic_flow.avg_speed": 25.2,
+            "traffic_flow.avg_vehicle_count": 90.33333333333333,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T06:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T06:45:00.000",
+            "traffic_flow.avg_speed": 19.733333333333,
+            "traffic_flow.avg_vehicle_count": 89.66666666666667,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T07:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T07:00:00.000",
+            "traffic_flow.avg_speed": 27.733333333333,
+            "traffic_flow.avg_vehicle_count": 149.33333333333334,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T07:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T07:15:00.000",
+            "traffic_flow.avg_speed": 25.466666666667,
+            "traffic_flow.avg_vehicle_count": 149,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T07:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T07:30:00.000",
+            "traffic_flow.avg_speed": 23.566666666667,
+            "traffic_flow.avg_vehicle_count": 146,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T07:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T07:45:00.000",
+            "traffic_flow.avg_speed": 25.233333333333,
+            "traffic_flow.avg_vehicle_count": 142.66666666666666,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T08:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T08:00:00.000",
+            "traffic_flow.avg_speed": 26.366666666667,
+            "traffic_flow.avg_vehicle_count": 177,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T08:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T08:15:00.000",
+            "traffic_flow.avg_speed": 24.266666666667,
+            "traffic_flow.avg_vehicle_count": 165.66666666666666,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T08:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T08:30:00.000",
+            "traffic_flow.avg_speed": 24.566666666667,
+            "traffic_flow.avg_vehicle_count": 171,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T08:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T08:45:00.000",
+            "traffic_flow.avg_speed": 24.166666666667,
+            "traffic_flow.avg_vehicle_count": 167,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T09:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T09:00:00.000",
+            "traffic_flow.avg_speed": 24.033333333333,
+            "traffic_flow.avg_vehicle_count": 146.66666666666666,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T09:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T09:15:00.000",
+            "traffic_flow.avg_speed": 26.333333333333,
+            "traffic_flow.avg_vehicle_count": 139,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T09:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T09:30:00.000",
+            "traffic_flow.avg_speed": 6.2,
+            "traffic_flow.avg_vehicle_count": 59.666666666666664,
+            "traffic_flow.congestion_rate": 1,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T09:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T09:45:00.000",
+            "traffic_flow.avg_speed": 7.1,
+            "traffic_flow.avg_vehicle_count": 58.333333333333336,
+            "traffic_flow.congestion_rate": 1,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T10:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T10:00:00.000",
+            "traffic_flow.avg_speed": 7.8,
+            "traffic_flow.avg_vehicle_count": 35.333333333333336,
+            "traffic_flow.congestion_rate": 1,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T10:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T10:15:00.000",
+            "traffic_flow.avg_speed": 6.9,
+            "traffic_flow.avg_vehicle_count": 33,
+            "traffic_flow.congestion_rate": 1,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T10:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T10:30:00.000",
+            "traffic_flow.avg_speed": 9.133333333333,
+            "traffic_flow.avg_vehicle_count": 33,
+            "traffic_flow.congestion_rate": 1,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T10:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T10:45:00.000",
+            "traffic_flow.avg_speed": 6.166666666667,
+            "traffic_flow.avg_vehicle_count": 38,
+            "traffic_flow.congestion_rate": 1,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T11:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T11:00:00.000",
+            "traffic_flow.avg_speed": 24.7,
+            "traffic_flow.avg_vehicle_count": 44.333333333333336,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T11:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T11:15:00.000",
+            "traffic_flow.avg_speed": 27.666666666667,
+            "traffic_flow.avg_vehicle_count": 52.666666666666664,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T11:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T11:30:00.000",
+            "traffic_flow.avg_speed": 24.833333333333,
+            "traffic_flow.avg_vehicle_count": 47.666666666666664,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T11:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T11:45:00.000",
+            "traffic_flow.avg_speed": 23.8,
+            "traffic_flow.avg_vehicle_count": 46,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T12:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T12:00:00.000",
+            "traffic_flow.avg_speed": 22.466666666667,
+            "traffic_flow.avg_vehicle_count": 71,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T12:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T12:15:00.000",
+            "traffic_flow.avg_speed": 25.833333333333,
+            "traffic_flow.avg_vehicle_count": 67.66666666666667,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T12:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T12:30:00.000",
+            "traffic_flow.avg_speed": 25.733333333333,
+            "traffic_flow.avg_vehicle_count": 62,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T12:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T12:45:00.000",
+            "traffic_flow.avg_speed": 25.466666666667,
+            "traffic_flow.avg_vehicle_count": 65.66666666666667,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T13:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T13:00:00.000",
+            "traffic_flow.avg_speed": 25.533333333333,
+            "traffic_flow.avg_vehicle_count": 65,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T13:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T13:15:00.000",
+            "traffic_flow.avg_speed": 25.666666666667,
+            "traffic_flow.avg_vehicle_count": 55.333333333333336,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T13:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T13:30:00.000",
+            "traffic_flow.avg_speed": 27.066666666667,
+            "traffic_flow.avg_vehicle_count": 57.333333333333336,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T13:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T13:45:00.000",
+            "traffic_flow.avg_speed": 25.2,
+            "traffic_flow.avg_vehicle_count": 71.33333333333333,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T14:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T14:00:00.000",
+            "traffic_flow.avg_speed": 23.133333333333,
+            "traffic_flow.avg_vehicle_count": 87.66666666666667,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T14:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T14:15:00.000",
+            "traffic_flow.avg_speed": 28.266666666667,
+            "traffic_flow.avg_vehicle_count": 101,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T14:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T14:30:00.000",
+            "traffic_flow.avg_speed": 26.6,
+            "traffic_flow.avg_vehicle_count": 94.33333333333333,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T14:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T14:45:00.000",
+            "traffic_flow.avg_speed": 23.7,
+            "traffic_flow.avg_vehicle_count": 94,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T15:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T15:00:00.000",
+            "traffic_flow.avg_speed": 27.466666666667,
+            "traffic_flow.avg_vehicle_count": 127.33333333333333,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 1
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T15:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T15:15:00.000",
+            "traffic_flow.avg_speed": 23.766666666667,
+            "traffic_flow.avg_vehicle_count": 123.66666666666667,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T15:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T15:30:00.000",
+            "traffic_flow.avg_speed": 25.3,
+            "traffic_flow.avg_vehicle_count": 141,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T15:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T15:45:00.000",
+            "traffic_flow.avg_speed": 26.833333333333,
+            "traffic_flow.avg_vehicle_count": 143.33333333333334,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T16:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T16:00:00.000",
+            "traffic_flow.avg_speed": 17.7,
+            "traffic_flow.avg_vehicle_count": 191,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T16:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T16:15:00.000",
+            "traffic_flow.avg_speed": 24.9,
+            "traffic_flow.avg_vehicle_count": 197,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T16:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T16:30:00.000",
+            "traffic_flow.avg_speed": 29.5,
+            "traffic_flow.avg_vehicle_count": 187,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T20:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T20:00:00.000",
+            "traffic_flow.avg_speed": 23.2,
+            "traffic_flow.avg_vehicle_count": 192.5,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T20:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T20:15:00.000",
+            "traffic_flow.avg_speed": 24.6,
+            "traffic_flow.avg_vehicle_count": 200,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T21:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T21:00:00.000",
+            "traffic_flow.avg_speed": 25.933333333333,
+            "traffic_flow.avg_vehicle_count": 132.66666666666666,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T21:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T21:15:00.000",
+            "traffic_flow.avg_speed": 23.366666666667,
+            "traffic_flow.avg_vehicle_count": 131.33333333333334,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T21:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T21:30:00.000",
+            "traffic_flow.avg_speed": 28.333333333333,
+            "traffic_flow.avg_vehicle_count": 130.33333333333334,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T21:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T21:45:00.000",
+            "traffic_flow.avg_speed": 21.566666666667,
+            "traffic_flow.avg_vehicle_count": 132,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T22:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T22:00:00.000",
+            "traffic_flow.avg_speed": 26.3,
+            "traffic_flow.avg_vehicle_count": 93.66666666666667,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T22:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T22:15:00.000",
+            "traffic_flow.avg_speed": 24.5,
+            "traffic_flow.avg_vehicle_count": 76.66666666666667,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T22:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T22:30:00.000",
+            "traffic_flow.avg_speed": 25.8,
+            "traffic_flow.avg_vehicle_count": 84,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T22:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T22:45:00.000",
+            "traffic_flow.avg_speed": 24.833333333333,
+            "traffic_flow.avg_vehicle_count": 93,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T23:00:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T23:00:00.000",
+            "traffic_flow.avg_speed": 25.066666666667,
+            "traffic_flow.avg_vehicle_count": 91.66666666666667,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T23:15:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T23:15:00.000",
+            "traffic_flow.avg_speed": 22.4,
+            "traffic_flow.avg_vehicle_count": 73.5,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T23:30:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T23:30:00.000",
+            "traffic_flow.avg_speed": 24,
+            "traffic_flow.avg_vehicle_count": 74,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          },
+          {
+            "traffic_flow.section_id": "TTTM",
+            "traffic_flow.recorded_at.minute": "2026-07-25T23:45:00.000",
+            "traffic_flow.recorded_at": "2026-07-25T23:45:00.000",
+            "traffic_flow.avg_speed": 26.433333333333,
+            "traffic_flow.avg_vehicle_count": 73.66666666666667,
+            "traffic_flow.congestion_rate": 0,
+            "traffic_flow.overspeed_count": 0
+          }
+        ],
+        "answer": "**Tóm tắt tổng quan**: Tình hình giao thông tại TTTM trong khung giờ từ 17h đến 19h ngày 25/7 cho thấy tốc độ lưu thông trung bình và số lượng xe qua lại.\n\n**Số liệu chi tiết**:\n- **Thời gian ghi nhận**: Từ 17h00 đến 19h00 ngày 25/7\n- **Tốc độ lưu thông trung bình**: \n  - 17h00: 17.70 km/h\n  - 17h15: 24.90 km/h\n  - 17h30: 29.50 km/h\n  - 17h45: 26.83 km/h\n  - 18h00: 17.70 km/h\n  - 18h15: 24.90 km/h\n  - 18h30: 29.50 km/h\n  - 18h45: 26.83 km/h\n  - 19h00: 17.70 km/h\n- **Số lượng xe lưu thông trung bình**: \n  - 17h00: 191 xe\n  - 17h15: 197 xe\n  - 17h30: 187 xe\n  - 17h45: 191 xe\n  - 18h00: 192 xe\n  - 18h15: 200 xe\n  - 18h30: 132 xe\n  - 18h45: 131 xe\n  - 19h00: 130 xe\n- **Tỷ lệ ùn tắc giao thông**: 0%\n- **Số lần vi phạm tốc độ**: 0 lần\n\nDữ liệu trên phản ánh tình hình giao thông tại TTTM trong khoảng thời gian đã nêu.",
+        "suggestions": null
+      },
+      "verdict": "FAIL",
+      "note": "T1 tra 'success', dump 4 measures o granularity phut cho khung 17h-19h -> 81 dong du lieu thay vi hoi chon 1 trong 3 metric."
+    },
+    "Y06": {
+      "type": "single",
+      "expected": {
+        "type": "single",
+        "cube": "districts",
+        "t1_expected_status": "clarification",
+        "ambiguity": "Entity resolution fail: 'Khu trung tam' khong khop section_name that (TTTM, Can ho, Khu biet thu)"
+      },
+      "t1_question": "Tốc độ tối đa cho phép ở khu trung tâm là bao nhiêu?",
+      "t1_actual": {
+        "status": "clarification",
+        "query": null,
+        "data": [],
+        "answer": "Câu hỏi của bạn không đề cập đến bất kỳ chỉ số cụ thể nào. Bạn muốn xem thông tin về tốc độ tối đa cho phép, số lượng xe, hay tỷ lệ ùn tắc giao thông? Bạn muốn xem A, B hay C?",
+        "suggestions": [
+          "Smart Lighting",
+          "Smart Parking",
+          "Traffic Flow"
+        ]
+      },
+      "verdict": "FAIL (dung status, sai noi dung)",
+      "note": "T1 tra dung status=clarification nhung hoi sai loai mo ho: hoi ve metric (toc do toi da/so xe/ty le un tac, suggestions=[Smart Lighting, Smart Parking, Traffic Flow]) thay vi nhan dien 'khu trung tam' la thuc the khong khop va xac nhan lai 1 trong 3 khu that."
+    },
+    "Y07": {
+      "type": "single",
+      "expected": {
+        "type": "single",
+        "cube": "smart_parking",
+        "t1_expected_status": "clarification",
+        "ambiguity": "Moc thoi gian mo ho: 'luc truoc' khong xac dinh ngay cu the trong dai 21-28/7"
+      },
+      "t1_question": "Bãi đỗ xe ở Khu Căn hộ lúc trước như thế nào?",
+      "t1_actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "smart_parking.total_records",
+            "smart_parking.avg_slot_capacity",
+            "smart_parking.avg_occupied_slots",
+            "smart_parking.max_occupied_slots",
+            "smart_parking.occupancy_pct"
+          ],
+          "dimensions": [
+            "smart_parking.section_id"
+          ],
+          "filters": [
+            {
+              "member": "smart_parking.section_id",
+              "operator": "equals",
+              "values": [
+                "Can ho"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "smart_parking.recorded_at",
+              "dateRange": "last 30 days"
+            }
+          ]
+        },
+        "data": [
+          {
+            "smart_parking.section_id": "Can ho",
+            "smart_parking.total_records": 672,
+            "smart_parking.avg_slot_capacity": 100,
+            "smart_parking.avg_occupied_slots": 88.22916666666667,
+            "smart_parking.max_occupied_slots": 90,
+            "smart_parking.occupancy_pct": 88.229166666667
+          }
+        ],
+        "answer": "**Tóm tắt tổng quan**: Bãi đỗ xe ở Khu Căn hộ trong thời gian từ 19/07/2026 đến 17/08/2026 có tổng số liệu ghi nhận như sau.\n\n**Số liệu chi tiết**:\n- Tổng số bản ghi: 672\n- Sức chứa trung bình của bãi đỗ xe: 100 chỗ\n- Số chỗ đã sử dụng trung bình: 88.23\n- Số chỗ đã sử dụng cao nhất: 90\n- Tỷ lệ lấp đầy bãi đỗ xe: 88.23%",
+        "suggestions": null
+      },
+      "verdict": "FAIL",
+      "note": "T1 tra 'success', tu y mac dinh dateRange='last 30 days' cho 'luc truoc' thay vi hoi ro ngay cu the trong dai 21-28/7; tra ve so lieu gop 672 ban ghi."
+    },
+    "Y08": {
+      "type": "single",
+      "expected": {
+        "type": "single",
+        "cube": "city_health_index",
+        "t1_expected_status": "clarification",
+        "ambiguity": "Cau hoi dinh tinh: diem so avg_livability_index vs phan hang livability_grade"
+      },
+      "t1_question": "Chỉ số đáng sống Livability ở Khu biệt thự ngày 25/7 có tốt không?",
+      "t1_actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "city_health_index.avg_livability_index"
+          ],
+          "dimensions": [
+            "city_health_index.section_id"
+          ],
+          "filters": [
+            {
+              "member": "city_health_index.section_id",
+              "operator": "equals",
+              "values": [
+                "Khu biet thu"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "city_health_index.date",
+              "dateRange": "2026-07-25",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "city_health_index.section_id": "Khu biet thu",
+            "city_health_index.date.day": "2026-07-25T00:00:00.000",
+            "city_health_index.date": "2026-07-25T00:00:00.000",
+            "city_health_index.avg_livability_index": 66.402827352
+          }
+        ],
+        "answer": "**Tóm tắt tổng quan**: Chỉ số đáng sống Livability tại Khu biệt thự vào ngày 25/7 là 66.40.\n\n**Số liệu chi tiết**:\n- Khu vực: Khu biệt thự\n- Ngày: 25/7/2026\n- Chỉ số Livability trung bình: 66.40",
+        "suggestions": null
+      },
+      "verdict": "FAIL",
+      "note": "T1 tra 'success', chi tra diem so avg_livability_index=66.40 ma khong hoi lai giua diem so hay phan hang."
+    },
+    "Y09": {
+      "type": "single",
+      "expected": {
+        "type": "single",
+        "cube": "smart_parking",
+        "t1_expected_status": "clarification",
+        "ambiguity": "Nguong cam tinh: occupancy_pct vs occupancy_level=CRITICAL(>80%)"
+      },
+      "t1_question": "Bãi đỗ xe ở TTTM ngày 27/7 có bị quá tải không?",
+      "t1_actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "smart_parking.occupancy_pct"
+          ],
+          "dimensions": [
+            "smart_parking.section_id"
+          ],
+          "filters": [
+            {
+              "member": "smart_parking.section_id",
+              "operator": "equals",
+              "values": [
+                "TTTM"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "smart_parking.recorded_at",
+              "dateRange": "2026-07-27",
+              "granularity": "day"
+            }
+          ]
+        },
+        "data": [
+          {
+            "smart_parking.section_id": "TTTM",
+            "smart_parking.recorded_at.day": "2026-07-27T00:00:00.000",
+            "smart_parking.recorded_at": "2026-07-27T00:00:00.000",
+            "smart_parking.occupancy_pct": 88.694736842105
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Bãi đỗ xe tại TTTM vào ngày 27/7 có tỷ lệ lấp đầy là 88.69%.\n\n- **Số liệu chi tiết**:\n  - Khu vực: TTTM\n  - Tỷ lệ lấp đầy: 88.69%",
+        "suggestions": null
+      },
+      "verdict": "FAIL",
+      "note": "T1 tra 'success', chi tra occupancy_pct=88.69% ma khong hoi lai giua ty le % hay ban ghi muc CRITICAL."
+    },
+    "Y10": {
+      "type": "single",
+      "expected": {
+        "type": "single",
+        "cube": "air_quality",
+        "t1_expected_status": "clarification",
+        "ambiguity": "Metric mo ho: avg_noise_db vs noise_category (QUIET/MODERATE/NOISY)"
+      },
+      "t1_question": "Mức độ ô nhiễm tiếng ồn ở Khu biệt thự trong tuần 21-28/7",
+      "t1_actual": {
+        "status": "success",
+        "query": {
+          "measures": [
+            "air_quality.avg_noise_db"
+          ],
+          "dimensions": [
+            "air_quality.section_id"
+          ],
+          "filters": [
+            {
+              "member": "air_quality.section_id",
+              "operator": "equals",
+              "values": [
+                "Khu biet thu"
+              ]
+            }
+          ],
+          "timeDimensions": [
+            {
+              "dimension": "air_quality.recorded_at",
+              "dateRange": "2026-07-21 to 2026-07-28"
+            }
+          ]
+        },
+        "data": [
+          {
+            "air_quality.section_id": "Khu biet thu",
+            "air_quality.avg_noise_db": 73.162790697674
+          }
+        ],
+        "answer": "- **Tóm tắt tổng quan**: Mức độ ô nhiễm tiếng ồn ở Khu biệt thự trong tuần từ 21 đến 28 tháng 7 là 73.16 dBA.\n\n- **Số liệu chi tiết**:\n  - Khu vực: Khu biệt thự\n  - Mức độ tiếng ồn trung bình: 73.16 dBA",
+        "suggestions": null
+      },
+      "verdict": "FAIL",
+      "note": "T1 tra 'success', chi tra avg_noise_db=73.16 dBA (ca tuan) ma khong hoi lai giua gia tri do hay phan cap muc on."
+    }
+  }
+}
