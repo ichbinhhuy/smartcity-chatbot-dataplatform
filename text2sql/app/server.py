@@ -703,7 +703,7 @@ def api_chat(req: ChatRequest):
             "session_id": session_id,
             "suggestions": nlu_result.suggestions,
         }
-        lf_trace.update(output=res)
+        lf_trace.end(output=res)
         return res
 
     if nlu_result.status == NLUStatus.REFUSAL:
@@ -715,7 +715,7 @@ def api_chat(req: ChatRequest):
             "data": [],
             "session_id": session_id,
         }
-        lf_trace.update(output=res)
+        lf_trace.end(output=res)
         return res
 
     if nlu_result.status != NLUStatus.QUERY or not nlu_result.query:
@@ -727,7 +727,7 @@ def api_chat(req: ChatRequest):
             "data": [],
             "session_id": session_id,
         }
-        lf_trace.update(output=res)
+        lf_trace.end(output=res)
         return res
 
     query_payload = nlu_result.query.to_cube_payload()
@@ -746,7 +746,7 @@ def api_chat(req: ChatRequest):
             "data": [],
             "session_id": session_id,
         }
-        lf_trace.update(output=res)
+        lf_trace.end(output=res)
         return res
 
     # NLG Phase
@@ -777,7 +777,7 @@ def api_chat(req: ChatRequest):
         "annotation": cube_data.get("annotation", {}),
         "session_id": session_id,
     }
-    lf_trace.update(output={"status": "success", "answer": final_answer})
+    lf_trace.end(output={"status": "success", "answer": final_answer})
     return res
 
 
@@ -827,7 +827,7 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
                 "session_id": session_id,
                 "suggestions": nlu_result.suggestions,
             }
-            lf_trace.update(output=payload)
+            lf_trace.end(output=payload)
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
             yield "data: {\"type\": \"done\"}\n\n"
             return
@@ -841,7 +841,7 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
                 "query": None,
                 "session_id": session_id,
             }
-            lf_trace.update(output=payload)
+            lf_trace.end(output=payload)
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
             yield "data: {\"type\": \"done\"}\n\n"
             return
@@ -854,7 +854,7 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
                 "query": None,
                 "session_id": session_id,
             }
-            lf_trace.update(output=payload)
+            lf_trace.end(output=payload)
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
             yield "data: {\"type\": \"done\"}\n\n"
             return
@@ -875,7 +875,7 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
                 "query": query_payload,
                 "session_id": session_id,
             }
-            lf_trace.update(output=payload)
+            lf_trace.end(output=payload)
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
             yield "data: {\"type\": \"done\"}\n\n"
             return
@@ -925,9 +925,10 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
 
             final_ans = "".join(full_text)
             nlg_gen.end(output={"text": final_ans, "finish_reason": finish_reason})
-            lf_trace.update(output={"status": "success", "answer": final_ans})
+            lf_trace.end(output={"status": "success", "answer": final_ans})
         except Exception as exc:
             nlg_gen.end(output={"error": str(exc)}, level="ERROR")
+            lf_trace.end(output={"error": str(exc)}, level="ERROR")
             err_payload = {"type": "token", "content": f"\nLỗi Stream NLG: {exc}"}
             yield f"data: {json.dumps(err_payload, ensure_ascii=False)}\n\n"
 
