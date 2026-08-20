@@ -51,3 +51,23 @@ class SessionStore(Protocol):
         streak: int,
         ttl_seconds: int | None = None,
     ) -> None: ...
+
+    # ---- Ngữ cảnh query gần nhất (xem app/nlu/validator.py `prior_query`) ----
+    # Bug 2 (kế hoạch fix, Phase 2): multi-turn hay mất `timeDimensions` của
+    # lượt trước khi LLM không lặp lại mốc thời gian ở lượt sau (dựa hoàn
+    # toàn vào prompt Rule 8(a) — Phase 1 — vẫn không đủ ổn định qua benchmark
+    # thực tế). Lưu lại `CubeQuery` (dạng dict, JSON-serializable) của lần
+    # QUERY thành công gần nhất trong session, để validator có nguồn dự phòng
+    # tất định thay vì chỉ trông chờ model tự nhớ. Cùng contract degrade-êm
+    # như get()/save() ở trên — KHÔNG raise khi backend lỗi.
+
+    def get_last_query_context(self, session_id: str) -> dict[str, Any] | None:
+        """Trả về `None` nếu session chưa có query nào thành công/đã hết hạn."""
+        ...
+
+    def set_last_query_context(
+        self,
+        session_id: str,
+        query: dict[str, Any],
+        ttl_seconds: int | None = None,
+    ) -> None: ...

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.llm.types import LLMResponse
-from app.nlu.tool_schema import QUERY_TOOL_NAME
+from app.nlu.tool_schema import QUERY_TOOL_NAME, REFUSE_TOOL_NAME
 
 
 @dataclass
@@ -44,6 +44,18 @@ def parse_response(response: LLMResponse) -> ParsedResponse:
                 text=response.text,
                 tool_call_id=call.id,
                 tool_input=call.input,
+                raw_assistant_content=response.raw_assistant_content,
+            )
+        if call.name == REFUSE_TOOL_NAME:
+            # LLM tự quyết định từ chối qua tool call có cấu trúc — xem
+            # app/nlu/tool_schema.py::build_refuse_tool(). Tái dùng nhánh
+            # REFUSAL sẵn có ở orchestrator.py (vốn chỉ chờ is_refusal=True)
+            # thay vì cần sửa orchestrator.
+            refuse_input = call.input or {}
+            return ParsedResponse(
+                text=refuse_input.get("message") or "Yêu cầu nằm ngoài phạm vi hệ thống hỗ trợ.",
+                is_refusal=True,
+                refusal_reason=refuse_input.get("reason"),
                 raw_assistant_content=response.raw_assistant_content,
             )
 

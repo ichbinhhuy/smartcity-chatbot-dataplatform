@@ -34,6 +34,11 @@ class LLMResponse:
     # text/tool_use). Shape do provider tự quyết định, orchestrator chỉ echo lại.
     raw_assistant_content: Any = None
     usage: dict[str, int] = field(default_factory=dict)
+    # Lý do provider dừng generate ("stop", "length", "tool_calls", ...).
+    # "length" nghĩa là output bị cắt vì chạm max_tokens — caller (NLG ở
+    # app/server.py) dùng để thêm ghi chú "câu trả lời có thể bị cắt" thay vì
+    # âm thầm trả về văn bản dở dang. None nếu provider không trả trường này.
+    finish_reason: str | None = None
 
     @property
     def has_tool_call(self) -> bool:

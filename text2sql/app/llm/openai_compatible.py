@@ -20,6 +20,7 @@ from typing import Any
 
 import httpx
 
+from app.config import settings as default_settings
 from app.llm.types import LLMError, LLMResponse, LLMToolCall
 
 
@@ -126,6 +127,9 @@ class OpenAICompatibleLLMClient:
             "model": self.nlg_model,
             "messages": formatted_messages,
             "temperature": 0.3,
+            # Chặn model generate quá dài/lặp vô hạn khi dữ liệu Cube nhiều
+            # dòng — xem app.config.Settings.nlg_max_tokens (Bug 4).
+            "max_tokens": default_settings.nlg_max_tokens,
         }
         return self._call_api(payload)
 
@@ -141,11 +145,20 @@ class OpenAICompatibleLLMClient:
             "messages": formatted_messages,
             "temperature": 0.3,
             "stream": True,
+            # Chặn model generate quá dài/lặp vô hạn khi dữ liệu Cube nhiều
+            # dòng — xem app.config.Settings.nlg_max_tokens (Bug 4).
+            "max_tokens": default_settings.nlg_max_tokens,
         }
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+        # Reset trước mỗi lần gọi — caller (app/server.py) đọc attribute này
+        # SAU KHI vòng lặp generator kết thúc để biết stream có bị cắt vì
+        # chạm max_tokens hay không ("length"). Không đưa được finish_reason
+        # vào chuỗi yield (contract hiện tại chỉ yield content token) nên
+        # dùng instance attribute thay vì đổi shape generator.
+        self.last_finish_reason: str | None = None
         try:
             with httpx.stream("POST", f"{self.base_url}/chat/completions", headers=headers, json=payload, timeout=self._stream_timeout) as res:
                 for line in res.iter_lines():
@@ -156,10 +169,14 @@ class OpenAICompatibleLLMClient:
                         break
                     try:
                         chunk_json = json.loads(data_str)
-                        delta = chunk_json.get("choices", [{}])[0].get("delta", {})
+                        choice0 = chunk_json.get("choices", [{}])[0]
+                        delta = choice0.get("delta", {})
                         content = delta.get("content")
                         if content:
                             yield content
+                        finish_reason = choice0.get("finish_reason")
+                        if finish_reason:
+                            self.last_finish_reason = finish_reason
                     except Exception:
                         pass
         except Exception as exc:
@@ -219,6 +236,7 @@ class OpenAICompatibleLLMClient:
                     "input_tokens": usage.get("prompt_tokens", 0),
                     "output_tokens": usage.get("completion_tokens", 0),
                 },
+                finish_reason=choice.get("finish_reason"),
             )
         except Exception as exc:
             raise LLMError(f"Không parse được response từ {self.provider_name} API: {exc}") from exc

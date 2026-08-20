@@ -25,6 +25,13 @@ class CatalogCube:
     measures: list[CatalogField]
     dimensions: list[CatalogField]
     time_dimensions: list[CatalogField]
+    # Cube danh mục/tham chiếu gốc (vd `districts`) — xem
+    # cube_meta.py::_REFERENCE_CUBE_NAMES (đáng lẽ nên đọc từ field `meta`
+    # chuẩn của Cube schema, nhưng Cube.js v0.34.0 không hỗ trợ `meta` ở cấp
+    # cube — xem ghi chú tại cube_meta.py). Nhãn tường minh này thay cho
+    # heuristic cũ "cube không có measures" — heuristic đó đã chứng minh dễ
+    # vỡ khi 1 cube tham chiếu được thêm measure riêng.
+    is_reference: bool = False
 
 
 @dataclass(frozen=True)

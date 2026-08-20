@@ -12,7 +12,7 @@ cubes:
     measures:
       - name: total_incidents
         title: "Tong so su co giao thong"
-        description: "Tong so su co giao thong ghi nhan trong ky: tai nan, ngap lut, cong trinh, un tac nghiem trong"
+        description: "Tong so su co giao thong ghi nhan trong ky: tai nan, cong trinh, hong den tin hieu"
         type: count
 
       - name: avg_duration_min
@@ -43,7 +43,7 @@ cubes:
 
       - name: incident_type
         title: "Loai su co"
-        description: "Phan loai su co: ACCIDENT (tai nan), FLOOD (ngap lut), CONSTRUCTION (cong trinh), CONGESTION (un tac)"
+        description: "Phan loai su co: accident (tai nan), road_work (cong trinh/sua duong), traffic_light_failure (hong den tin hieu)"
         sql: incident_type
         type: string
 

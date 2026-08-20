@@ -13,10 +13,22 @@ from app.catalog.models import Catalog
 from app.nlu.types import RELATIVE_DATE_RANGES, TIME_GRAINS
 
 QUERY_TOOL_NAME = "query_metrics"
+REFUSE_TOOL_NAME = "refuse_request"
 
 _FILTER_OPERATORS = [
     "equals", "notEquals", "contains", "notContains", "gt", "gte", "lt", "lte", "set", "notSet"
 ]
+
+_REFUSAL_REASONS = [
+    "out_of_domain",
+    "external_data_unavailable",
+    "hallucination_forecast_request",
+]
+# Cố ý KHÔNG có "other" — enum chỉ gồm 3 case rõ ràng nêu ở prompt.py Nhóm 1.
+# Từng có "other" làm lối thoát mơ hồ: LLM dùng nó để từ chối cả những câu hỏi
+# lẽ ra cần hỏi lại (Nhóm 2) chứ không phải từ chối hẳn — xem benchmark
+# text2sql/tests/benchmark_results/. Không khớp chính xác 1 trong 3 lý do =>
+# KHÔNG được gọi tool này, phải chuyển sang answer hoặc clarification.
 
 
 def build_query_tool(catalog: Catalog, candidates: dict[str, list[str]] | None = None) -> dict[str, Any]:
@@ -26,7 +38,10 @@ def build_query_tool(catalog: Catalog, candidates: dict[str, list[str]] | None =
     m_desc = (
         "Các chỉ số cần tính, dạng <cube>.<measure>. Có thể để RỖNG nếu câu hỏi chỉ cần "
         "liệt kê/đếm số lượng theo dimensions (vd 'có bao nhiêu khu vực') mà không cần tính "
-        "chỉ số nào — khi đó BẮT BUỘC dimensions phải có ít nhất 1 phần tử."
+        "chỉ số nào — khi đó BẮT BUỘC dimensions phải có ít nhất 1 phần tử. Lưu ý: với câu hỏi "
+        "'Tổng số X'/'bao nhiêu X' về MỘT ĐỐI TƯỢNG (không phải một chỉ số đo lường), hãy kiểm tra "
+        "cả Dimension dạng số (type: number) của cube danh mục/tham chiếu trước khi tìm trong measures "
+        "— dimension đó có thể tự nó chính là câu trả lời."
     )
     d_desc = "Các chiều để nhóm kết quả."
     if candidates and candidates.get("measures"):
@@ -128,5 +143,46 @@ def build_query_tool(catalog: Catalog, candidates: dict[str, list[str]] | None =
     }
 
 
+def build_refuse_tool() -> dict[str, Any]:
+    """Tool để LLM chủ động từ chối yêu cầu — thay cho việc dựa vào trường
+    `is_refusal` từ provider (không provider hiện tại nào populate trường
+    này, xem app/llm/openai_compatible.py). Biến "từ chối" thành 1 quyết
+    định tool-call có cấu trúc, test được, thay vì suy đoán từ text tự do.
+
+    Cố ý KHÔNG liệt kê các trường hợp phá hoại dữ liệu/rò rỉ credential vào
+    enum `reason` — những trường hợp đó nên được chặn bởi 1 lớp guardrail
+    tất định độc lập với LLM (xem Phase 2 trong kế hoạch fix), không phải
+    để LLM tự phán đoán.
+    """
+    return {
+        "name": REFUSE_TOOL_NAME,
+        "description": (
+            "Từ chối yêu cầu — CHỈ dùng cho đúng 3 lý do liệt kê trong enum `reason`, không có lý do "
+            "nào khác. KHÔNG dùng tool này khi chỉ cần hỏi lại để làm rõ 1 chi tiết còn thiếu (dùng "
+            "text thường), và KHÔNG dùng chỉ vì không chắc 1 ngày/khoảng thời gian cụ thể có dữ liệu "
+            "hay không — hãy cứ gọi query_metrics, hệ thống sẽ tự trả về rỗng nếu thật sự không có."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string",
+                    "enum": _REFUSAL_REASONS,
+                    "description": "Loại lý do từ chối — xem mô tả tool.",
+                },
+                "message": {
+                    "type": "string",
+                    "description": (
+                        "Câu trả lời tiếng Việt giải thích rõ vì sao từ chối. Nếu một phần câu hỏi "
+                        "vẫn trả lời được bằng dữ liệu nội bộ hệ thống, BẮT BUỘC nêu rõ phần đó trong "
+                        "message thay vì âm thầm bỏ qua."
+                    ),
+                },
+            },
+            "required": ["reason", "message"],
+        },
+    }
+
+
 def build_tools(catalog: Catalog, candidates: dict[str, list[str]] | None = None) -> list[dict[str, Any]]:
-    return [build_query_tool(catalog, candidates)]
+    return [build_query_tool(catalog, candidates), build_refuse_tool()]
